@@ -1,3 +1,11 @@
+## [1.0.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.0...v1.0.1) (2025-01-13)
+
+
+### Bug Fixes
+
+* handle errors ([f668ba9](https://github.com/adobe-rnd/helix-mixer/commit/f668ba901b79a29f60b69f0bb763213b56ca661f))
+* support public confifg ([7c0f95a](https://github.com/adobe-rnd/helix-mixer/commit/7c0f95a7dc558a14de01b1c813ba1a5766ea4c57))
+
 # 1.0.0 (2024-12-09)
 
 
