@@ -10,7 +10,10 @@
  * governing permissions and limitations under the License.
  */
 
-import { errorWithResponse } from './util.js';
+import { errorWithResponse, ffetch } from './util.js';
+
+/** @type {'CONFIG_SERVICE' | 'STORAGE'} */
+const SOURCE = 'CONFIG_SERVICE';
 
 /**
  * @param {string[]} patterns - An array of pattern strings to match against.
@@ -47,7 +50,21 @@ export async function resolveConfig(ctx, overrides = {}) {
   /**
    * @type {ConfigMap}
    */
-  const confMap = await ctx.env.CONFIGS.get(siteKey, 'json');
+  let confMap;
+  if (SOURCE === 'STORAGE') {
+    confMap = await ctx.storage.get(siteKey, 'json');
+  } else {
+    const res = await ffetch(`https://main--${site}--${org}.aem.page/config.json`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw errorWithResponse(404, 'config not found');
+      }
+      throw errorWithResponse(500, 'config fetch failed');
+    }
+    const json = await res.json();
+    confMap = json.public?.mixerConfig;
+  }
+
   if (!confMap) {
     return null;
   }

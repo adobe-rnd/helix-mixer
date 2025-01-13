@@ -12,7 +12,7 @@
 
 /**
  * @param {string} url - The URL to fetch.
- * @param {import("@cloudflare/workers-types").RequestInit } init - The request init.
+ * @param {import("@cloudflare/workers-types").RequestInit} [init] - The request init.
  * @returns {Promise<Response>} - A promise that resolves to the response.
  */
 export async function ffetch(url, init) {
