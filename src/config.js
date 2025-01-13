@@ -55,8 +55,11 @@ export async function resolveConfig(ctx, overrides = {}) {
     confMap = await ctx.storage.get(siteKey, 'json');
   } else {
     const res = await ffetch(`https://main--${site}--${org}.aem.page/config.json`);
-    if (res.status === 404) {
-      throw errorWithResponse(404, 'config not found');
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw errorWithResponse(404, 'config not found');
+      }
+      throw errorWithResponse(500, 'config fetch failed');
     }
     const json = await res.json();
     confMap = json.public?.mixerConfig;
