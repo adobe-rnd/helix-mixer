@@ -26,7 +26,7 @@ declare global {
     org: string;
     site: string;
     siteKey: string;
-    origin?: string;
+    origin: string;
     pathname: string;
   }
 
