@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { errorWithResponse, ffetch } from './util.js';
+import { errorWithResponse, ffetch, globToRegExp } from './util.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
@@ -23,7 +23,7 @@ function findGlobMatch(patterns, path) {
   return patterns
     .sort((a, b) => b.length - a.length)
     .map((pattern) => {
-      const re = new RegExp(`^${pattern.replace(/\*/g, '([^/]+)').replace('/**/', '(.*)')}$`);
+      const re = globToRegExp(pattern);
       const match = path.match(re);
       return match ? pattern : null;
     })

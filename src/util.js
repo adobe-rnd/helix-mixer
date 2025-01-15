@@ -70,3 +70,15 @@ export function errorWithResponse(status, xError, body = '') {
   const error = new ResponseError(xError, response);
   return error;
 }
+
+/**
+ * @param {string} glob
+ * @returns {RegExp}
+ */
+export function globToRegExp(glob) {
+  const reString = glob
+    .replaceAll('**', '|')
+    .replaceAll('*', '[0-9a-z-.]*')
+    .replaceAll('|', '.*');
+  return new RegExp(`^${reString}$`);
+}
