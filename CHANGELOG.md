@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.2...v1.1.0) (2025-02-19)
+
+
+### Features
+
+* public config ([c5c8b85](https://github.com/adobe-rnd/helix-mixer/commit/c5c8b858cad1110b319e8b6dcce5b1da7daa1774))
+
 ## [1.0.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.1...v1.0.2) (2025-01-15)
 
 
