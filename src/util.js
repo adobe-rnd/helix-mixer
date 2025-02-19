@@ -11,13 +11,18 @@
  */
 
 /**
- * @param {string} url - The URL to fetch.
- * @param {import("@cloudflare/workers-types").RequestInit} [init] - The request init.
- * @returns {Promise<Response>} - A promise that resolves to the response.
+ * @param {import('@cloudflare/workers-types').Fetcher} [impl] - fetch implementation to use
+ * @returns {(
+ *  url: string,
+ *  init?: import("@cloudflare/workers-types").RequestInit
+ * ) => Promise<import("@cloudflare/workers-types").Response>}
  */
-export async function ffetch(url, init) {
+export const ffetch = (impl) => async (url, init) => {
+  /** @type {import("@cloudflare/workers-types").Fetcher['fetch']} */
   // @ts-ignore
-  const resp = await fetch(url, init);
+  const { fetch } = impl || globalThis;
+  // @ts-ignore
+  const resp = await fetch.call(impl, url, init);
   console.debug({
     url,
     status: resp.status,
@@ -25,7 +30,7 @@ export async function ffetch(url, init) {
     headers: Object.fromEntries(resp.headers),
   });
   return resp;
-}
+};
 
 /**
  * A custom error that includes a response property.
@@ -35,7 +40,7 @@ export class ResponseError extends Error {
   /**
    * Creates a ResponseError instance.
    * @param {string} message - The error message.
-   * @param {Response} response - The associated Response object.
+   * @param {import("@cloudflare/workers-types").Response} response
    */
   constructor(message, response) {
     super(message);
@@ -50,9 +55,10 @@ export class ResponseError extends Error {
  * @param {number} status - The HTTP status code.
  * @param {string} xError - The error message.
  * @param {string|Record<string,unknown>} [body=''] - The response body.
- * @returns {Response} - A response object.
+ * @returns {import("@cloudflare/workers-types").Response} - A response object.
  */
 export function errorResponse(status, xError, body = '') {
+  // @ts-ignore
   return new Response(typeof body === 'object' ? JSON.stringify(body) : body, {
     status,
     headers: { 'x-error': xError },
@@ -63,7 +69,7 @@ export function errorResponse(status, xError, body = '') {
  * @param {number} status - The HTTP status code.
  * @param {string} xError - The error message.
  * @param {string|Record<string,unknown>} [body=''] - The response body.
- * @returns {Error & {response: Response}} - An error object with a response property.
+ * @returns {Error & {response: import("@cloudflare/workers-types").Response}}
  */
 export function errorWithResponse(status, xError, body = '') {
   const response = errorResponse(status, xError, body);

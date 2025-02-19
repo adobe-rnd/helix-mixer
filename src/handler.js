@@ -10,20 +10,33 @@
  * governing permissions and limitations under the License.
  */
 
-import { errorResponse, ffetch } from './util.js';
+import { ffetch } from './util.js';
 
 /**
  * @param {Context} ctx
- * @returns {Promise<Response>}
+ * @returns {Promise<import('@cloudflare/workers-types').Response>}
  */
 export default async function handler(ctx) {
   const { config } = ctx;
-  if (!config.origin) {
-    return errorResponse(400, 'config missing origin');
-  }
+  const { origin, pathname } = config;
 
-  const beurl = new URL(`${config.pathname}${ctx.url.search}`, config.origin).toString();
-  const beresp = await ffetch(beurl, { headers: ctx.info.headers });
+  const beurl = new URL(
+    `${pathname}${ctx.url.search}`,
+    `${origin.startsWith('https://') ? origin : `http://${origin}`}`,
+  ).toString();
+
+  /** @type {import('@cloudflare/workers-types').Fetcher} */
+  let impl;
+  if (origin.endsWith('.magento.cloud')) {
+    ctx.log.debug('using mTLS fetcher');
+    // @ts-ignore
+    impl = ctx.CERT[config.siteKey];
+    if (!impl) {
+      ctx.log.warn(`missing mTLS fetcher for ${origin} (${config.siteKey})`);
+    }
+  }
+  ctx.log.debug('fetching: ', beurl);
+  const beresp = await ffetch(impl)(beurl, { headers: ctx.info.headers });
 
   return beresp;
 }

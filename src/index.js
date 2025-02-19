@@ -29,7 +29,14 @@ export function makeContext(pctx, req, env) {
   ctx.env = env;
   ctx.url = new URL(req.url);
   ctx.log = console;
+  ctx.CERT = {};
+  Object.entries(env).forEach(([k, v]) => {
+    if (k.startsWith('CERT_')) {
+      ctx.CERT[k.slice('CERT_'.length)] = v;
+    }
+  });
   ctx.info = {
+    subdomain: ctx.url.hostname.split('.')[0],
     method: req.method,
     headers: Object.fromEntries(
       [...req.headers.entries()]
@@ -44,7 +51,7 @@ export default {
    * @param {Request} request
    * @param {Env} env
    * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} pctx
-   * @returns {Promise<Response>}
+   * @returns {Promise<import('@cloudflare/workers-types').Response>}
    */
   async fetch(request, env, pctx) {
     if (request.method !== 'GET') {
@@ -58,7 +65,7 @@ export default {
       const config = await resolveConfig(ctx, overrides);
       ctx.config = config;
 
-      console.debug('resolved config: ', JSON.stringify(config));
+      ctx.log.debug('resolved config: ', JSON.stringify(config));
       if (!config) {
         return errorResponse(404, 'config not found');
       }

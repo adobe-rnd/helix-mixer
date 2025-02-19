@@ -9,3 +9,4 @@ tmp
 wrangler-versioned.toml
 .dev.vars
 .wrangler
+*.pem
