@@ -40,6 +40,6 @@ describe('Post-Deploy Tests', () => {
     const res = await fetch(url, opts);
 
     assert.strictEqual(res.status, 404);
-    assert.strictEqual(res.headers.get('x-error'), 'missing site');
+    assert.strictEqual(res.headers.get('x-error'), 'missing org');
   });
 });
