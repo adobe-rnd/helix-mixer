@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.0...v1.1.1) (2025-05-19)
+
+
+### Bug Fixes
+
+* allow missing config ([2227740](https://github.com/adobe-rnd/helix-mixer/commit/22277407ad96ffd3fef2e5b55e7ad0c8c35ade90))
+
 # [1.1.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.2...v1.1.0) (2025-05-19)
 
 
