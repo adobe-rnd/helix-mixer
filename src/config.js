@@ -70,12 +70,19 @@ export async function resolveConfig(ctx, overrides = {}) {
     const res = await ffetch()(`https://${siteKey}.aem.page/config.json`);
     if (!res.ok) {
       if (res.status === 404) {
-        throw errorWithResponse(404, 'config not found');
+        // throw errorWithResponse(404, 'config not found');
+        log.warn('config not found');
+        rawConfig = {
+          patterns: {},
+          backends: {},
+        };
+      } else {
+        throw errorWithResponse(500, 'config fetch failed');
       }
-      throw errorWithResponse(500, 'config fetch failed');
+    } else {
+      const json = await res.json();
+      rawConfig = json.public?.mixerConfig;
     }
-    const json = await res.json();
-    rawConfig = json.public?.mixerConfig;
   }
 
   if (!rawConfig) {
@@ -107,7 +114,10 @@ export async function resolveConfig(ctx, overrides = {}) {
 
   const backendKey = patterns[pattern] ?? 'default';
   if (!backends[backendKey]) {
-    throw errorWithResponse(400, `backend not found: ${backendKey}`);
+    // fallback to .aem.live
+    backends[backendKey] = {
+      origin: `https://${siteKey}.aem.live`,
+    };
   }
 
   log.debug(`pattern=${pattern} origin=${backends[backendKey].origin}`);
