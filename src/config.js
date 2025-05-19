@@ -81,7 +81,7 @@ export async function resolveConfig(ctx, overrides = {}) {
       }
     } else {
       const json = await res.json();
-      rawConfig = json.public?.mixerConfig;
+      rawConfig = json.public?.mixerConfig ?? { patterns: {}, backends: {} };
     }
   }
 
