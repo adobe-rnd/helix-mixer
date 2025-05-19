@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.2...v1.1.0) (2025-05-19)
+
+
+### Bug Fixes
+
+* fallback to aem.live ([7a46ec7](https://github.com/adobe-rnd/helix-mixer/commit/7a46ec78f03ce9e11ca0529ce7439b656b91ba71))
+
+
+### Features
+
+* public config ([c5c8b85](https://github.com/adobe-rnd/helix-mixer/commit/c5c8b858cad1110b319e8b6dcce5b1da7daa1774))
+
 # [1.1.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.0.2...v1.1.0) (2025-02-19)
 
 
