@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.2...v1.1.3) (2025-05-21)
+
+
+### Bug Fixes
+
+* disable caching ([263ae92](https://github.com/adobe-rnd/helix-mixer/commit/263ae924147a3a0b5b1cde013e4c34f51019bc8a))
+
 ## [1.1.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.1...v1.1.2) (2025-05-21)
 
 
