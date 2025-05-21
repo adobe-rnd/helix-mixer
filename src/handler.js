@@ -36,7 +36,13 @@ export default async function handler(ctx) {
     }
   }
   ctx.log.debug('fetching: ', beurl);
-  const beresp = await ffetch(impl)(beurl, { headers: ctx.info.headers });
+  const beresp = await ffetch(impl)(beurl, {
+    headers: ctx.info.headers,
+    cf: {
+      cacheEverything: false,
+      cacheTtl: 0,
+    },
+  });
 
   return beresp;
 }
