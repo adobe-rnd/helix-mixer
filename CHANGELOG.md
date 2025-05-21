@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.1...v1.1.2) (2025-05-21)
+
+
+### Bug Fixes
+
+* dont mutate execution contexT ([262e7b9](https://github.com/adobe-rnd/helix-mixer/commit/262e7b9f270006d0cec0671a5e9574f91a08d301))
+
 ## [1.1.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.0...v1.1.1) (2025-05-19)
 
 
