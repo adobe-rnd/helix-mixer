@@ -15,15 +15,17 @@ import { resolveConfig } from './config.js';
 import handler from './handler.js';
 
 /**
- * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} pctx
+ * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
  * @param {Request} req
  * @param {Env} env
  * @returns {Context}
  */
-export function makeContext(pctx, req, env) {
+export function makeContext(ectx, req, env) {
   /** @type {Context} */
   // @ts-ignore
-  const ctx = pctx;
+  const ctx = {
+    executionContext: ectx,
+  };
   // @ts-ignore
   ctx.attributes = {};
   ctx.env = env;
