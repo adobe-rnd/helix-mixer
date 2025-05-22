@@ -1,3 +1,11 @@
+## [1.1.5](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.4...v1.1.5) (2025-05-22)
+
+
+### Bug Fixes
+
+* path resolve tweaks ([266b6d8](https://github.com/adobe-rnd/helix-mixer/commit/266b6d82b544fde2184cf6dd0f5815f044e793f5))
+* tweaks ([1d89042](https://github.com/adobe-rnd/helix-mixer/commit/1d89042f291f0ae0803c2f16f2802874c37cf937))
+
 ## [1.1.4](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.3...v1.1.4) (2025-05-22)
 
 
