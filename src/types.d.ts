@@ -5,6 +5,7 @@ import { JSONTemplate } from "./templates/json/JSONTemplate.js";
 declare global {
   export interface BackendConfig {
     origin: string;
+    path?: string;
   }
 
   export interface RawConfig {

@@ -119,8 +119,25 @@ export async function resolveConfig(ctx, overrides = {}) {
       origin: `https://${siteKey}.aem.live`,
     };
   }
+  const backend = backends[backendKey];
 
-  log.debug(`pattern=${pattern} origin=${backends[backendKey].origin}`);
+  log.debug(`pattern=${pattern} origin=${backend.origin}`);
+
+  // resolve path
+  // prefer the path from backend config
+  let backendPath = backend.path ?? '';
+  // but also allow the path to be set on the origin
+  if (backend.origin.includes('/')) {
+    const parts = backend.origin.split('/');
+    ([backend.origin] = parts); // correct the origin to be pathless
+    if (!backendPath) {
+      backendPath = parts.slice(1).join('/');
+    }
+  }
+  if (backendPath.endsWith('/')) {
+    backendPath = backendPath.slice(0, -1);
+  }
+  const pathname = `/${backendPath}${ctx.url.pathname}`;
 
   /** @type {Config} */
   const resolved = {
@@ -128,10 +145,10 @@ export async function resolveConfig(ctx, overrides = {}) {
     site,
     ref,
     siteKey,
-    pathname: ctx.url.pathname,
+    pathname,
     pattern,
-    backend: backends[backendKey],
-    origin: backends[backendKey].origin,
+    backend,
+    origin: backend.origin,
     ...rawConfig,
     ...overrides,
   };
