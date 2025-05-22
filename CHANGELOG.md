@@ -1,3 +1,10 @@
+## [1.1.6](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.5...v1.1.6) (2025-05-22)
+
+
+### Bug Fixes
+
+* regex tweak ([ff75d28](https://github.com/adobe-rnd/helix-mixer/commit/ff75d28f1ca52901d46f3cfd237a78087c984f07))
+
 ## [1.1.5](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.4...v1.1.5) (2025-05-22)
 
 
