@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.3...v1.1.4) (2025-05-22)
+
+
+### Bug Fixes
+
+* allow paths in backend config ([8373368](https://github.com/adobe-rnd/helix-mixer/commit/8373368f84a63af3798372ccc956b4de4c57e53b))
+
 ## [1.1.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.2...v1.1.3) (2025-05-21)
 
 
