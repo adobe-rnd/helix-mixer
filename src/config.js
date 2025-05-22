@@ -113,6 +113,7 @@ export async function resolveConfig(ctx, overrides = {}) {
   );
 
   const backendKey = patterns[pattern] ?? 'default';
+  console.log('backendKey', backendKey);
   if (!backends[backendKey]) {
     // fallback to .aem.live
     backends[backendKey] = {
@@ -121,23 +122,26 @@ export async function resolveConfig(ctx, overrides = {}) {
   }
   const backend = backends[backendKey];
 
-  log.debug(`pattern=${pattern} origin=${backend.origin}`);
-
   // resolve path
   // prefer the path from backend config
   let backendPath = backend.path ?? '';
   // but also allow the path to be set on the origin
   if (backend.origin.includes('/')) {
     const parts = backend.origin.split('/');
-    ([backend.origin] = parts); // correct the origin to be pathless
+    backend.origin = parts.shift(); // correct the origin to be pathless
     if (!backendPath) {
-      backendPath = parts.slice(1).join('/');
+      backendPath = parts.join('/');
     }
   }
   if (backendPath.endsWith('/')) {
     backendPath = backendPath.slice(0, -1);
   }
-  const pathname = `/${backendPath}${ctx.url.pathname}`;
+  if (backendPath.startsWith('/')) {
+    backendPath = backendPath.slice(1);
+  }
+  const pathname = `${backendPath ? `/${backendPath}` : ''}${ctx.url.pathname}`;
+
+  log.debug(`pattern=${pattern} origin=${backend.origin} inpath=${ctx.url.pathname} bepath=${pathname}`);
 
   /** @type {Config} */
   const resolved = {
