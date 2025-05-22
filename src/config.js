@@ -113,7 +113,6 @@ export async function resolveConfig(ctx, overrides = {}) {
   );
 
   const backendKey = patterns[pattern] ?? 'default';
-  console.log('backendKey', backendKey);
   if (!backends[backendKey]) {
     // fallback to .aem.live
     backends[backendKey] = {
