@@ -84,7 +84,7 @@ export function errorWithResponse(status, xError, body = '') {
 export function globToRegExp(glob) {
   const reString = glob
     .replaceAll('**', '|')
-    .replaceAll('*', '[0-9a-z-.]*')
+    .replaceAll('*', '[^/]*')
     .replaceAll('|', '.*');
   return new RegExp(`^${reString}$`);
 }
