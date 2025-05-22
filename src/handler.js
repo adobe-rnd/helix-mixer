@@ -22,7 +22,7 @@ export default async function handler(ctx) {
 
   const beurl = new URL(
     `${pathname}${ctx.url.search}`,
-    `${origin.startsWith('https://') ? origin : `http://${origin}`}`,
+    `${/^https?:\/\//.test(origin) ? origin : `https://${origin}`}`,
   ).toString();
 
   /** @type {import('@cloudflare/workers-types').Fetcher} */
