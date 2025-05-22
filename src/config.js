@@ -126,7 +126,9 @@ export async function resolveConfig(ctx, overrides = {}) {
   let backendPath = backend.path ?? '';
   // but also allow the path to be set on the origin
   if (backend.origin.includes('/')) {
-    const parts = backend.origin.split('/');
+    const parts = /^https?:\/\//.test(backend.origin)
+      ? backend.origin.split('/').slice(2)
+      : backend.origin.split('/');
     backend.origin = parts.shift(); // correct the origin to be pathless
     if (!backendPath) {
       backendPath = parts.join('/');
