@@ -112,7 +112,7 @@ export async function resolveConfig(ctx, overrides = {}) {
     ctx.url.pathname,
   );
 
-  const backendKey = patterns[pattern] ?? 'default';
+  const backendKey = patterns[pattern] ?? patterns.default ?? 'default';
   if (!backends[backendKey]) {
     // fallback to .aem.live
     backends[backendKey] = {
