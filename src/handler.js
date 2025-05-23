@@ -49,6 +49,7 @@ export default async function handler(ctx) {
     status: beresp.status,
     headers: {
       ...Object.fromEntries(beresp.headers.entries()),
+      ...(beurl.includes('pipeline-cloudflare.adobecommerce.live') ? { 'x-robots-tag': 'noindex, nofollow' } : {}),
     },
   });
 }
