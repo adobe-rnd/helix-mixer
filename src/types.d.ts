@@ -33,6 +33,7 @@ declare global {
     VERSION: string;
     ENVIRONMENT: string;
     DEV: string | undefined;
+    PRODUCT_PIPELINE_TOKEN: string;
 
     // KV namespaces
     CONFIGS: KVNamespace<string>;
