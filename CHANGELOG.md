@@ -1,3 +1,10 @@
+## [1.1.7](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.6...v1.1.7) (2025-05-23)
+
+
+### Bug Fixes
+
+* log headers ([c1c0190](https://github.com/adobe-rnd/helix-mixer/commit/c1c01900a116528e0a1a62b1259f415070c7a9c7))
+
 ## [1.1.6](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.5...v1.1.6) (2025-05-22)
 
 
