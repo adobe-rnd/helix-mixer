@@ -44,5 +44,11 @@ export default async function handler(ctx) {
     },
   });
 
-  return beresp;
+  ctx.log.debug('beresp headers: ', Object.fromEntries(beresp.headers.entries()));
+  return new Response(beresp.body, {
+    status: beresp.status,
+    headers: {
+      ...Object.fromEntries(beresp.headers.entries()),
+    },
+  });
 }
