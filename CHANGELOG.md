@@ -1,3 +1,11 @@
+## [1.1.8](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.7...v1.1.8) (2025-05-23)
+
+
+### Bug Fixes
+
+* better default ([c19a070](https://github.com/adobe-rnd/helix-mixer/commit/c19a07040663b7537c77e5a160f9e725f802fc43))
+* override x-robots-tag temporarily ([4fd0f33](https://github.com/adobe-rnd/helix-mixer/commit/4fd0f33cffade601a2d240ea0c4db310cc0c7e89))
+
 ## [1.1.7](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.6...v1.1.7) (2025-05-23)
 
 
