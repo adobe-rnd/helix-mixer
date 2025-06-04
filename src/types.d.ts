@@ -55,6 +55,7 @@ declare global {
       method: string;
       headers: Record<string, string>;
       subdomain: string;
+      body: ReadableStream<any> | null;
     }
   }
 }

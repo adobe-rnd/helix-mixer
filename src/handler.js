@@ -38,6 +38,8 @@ export default async function handler(ctx) {
   }
   ctx.log.debug('fetching: ', beurl);
   const beresp = await ffetch(impl)(beurl.toString(), {
+    method: ctx.info.method,
+    body: ctx.info.body,
     headers: {
       ...ctx.info.headers,
       ...(isPipelineReq ? {
