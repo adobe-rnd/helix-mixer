@@ -16,7 +16,7 @@ import handler from './handler.js';
 
 /**
  * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
- * @param {Request} req
+ * @param {import('@cloudflare/workers-types').Request} req
  * @param {Env} env
  * @returns {Context}
  */
@@ -40,6 +40,7 @@ export function makeContext(ectx, req, env) {
   ctx.info = {
     subdomain: ctx.url.hostname.split('.')[0],
     method: req.method,
+    body: req.body,
     headers: Object.fromEntries(
       [...req.headers.entries()]
         .map(([k, v]) => [k.toLowerCase(), v]),
@@ -50,7 +51,7 @@ export function makeContext(ectx, req, env) {
 
 export default {
   /**
-   * @param {Request} request
+   * @param {import('@cloudflare/workers-types').Request} request
    * @param {Env} env
    * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} pctx
    * @returns {Promise<import('@cloudflare/workers-types').Response>}

@@ -23,7 +23,8 @@ export default async function handler(ctx) {
   const beurl = new URL(
     `${pathname}${ctx.url.search}`,
     `${/^https?:\/\//.test(origin) ? origin : `https://${origin}`}`,
-  ).toString();
+  );
+  const isPipelineReq = beurl.origin === 'https://pipeline-cloudflare.adobecommerce.live';
 
   /** @type {import('@cloudflare/workers-types').Fetcher} */
   let impl;
@@ -36,20 +37,28 @@ export default async function handler(ctx) {
     }
   }
   ctx.log.debug('fetching: ', beurl);
-  const beresp = await ffetch(impl)(beurl, {
-    headers: ctx.info.headers,
+  const beresp = await ffetch(impl)(beurl.toString(), {
+    method: ctx.info.method,
+    body: ctx.info.body,
+    headers: {
+      ...ctx.info.headers,
+      ...(isPipelineReq ? {
+        'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
+      } : {}),
+    },
     cf: {
       cacheEverything: false,
       cacheTtl: 0,
     },
   });
 
-  ctx.log.debug('beresp headers: ', Object.fromEntries(beresp.headers.entries()));
   return new Response(beresp.body, {
     status: beresp.status,
     headers: {
       ...Object.fromEntries(beresp.headers.entries()),
-      ...(beurl.includes('pipeline-cloudflare.adobecommerce.live') ? { 'x-robots-tag': 'noindex, nofollow' } : {}),
+      ...(isPipelineReq ? {
+        'x-robots-tag': 'noindex, nofollow',
+      } : {}),
     },
   });
 }
