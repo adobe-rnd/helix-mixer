@@ -1,3 +1,11 @@
+## [1.1.9](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.8...v1.1.9) (2025-06-04)
+
+
+### Bug Fixes
+
+* allow method and body ([4aff6c5](https://github.com/adobe-rnd/helix-mixer/commit/4aff6c54fb2b6fcb9ecacdd0ee840d2b3652cae7))
+* pass token to pipeline ([60e50fe](https://github.com/adobe-rnd/helix-mixer/commit/60e50fe998bc8609a54303b46cb517f2ef4f0a45))
+
 ## [1.1.8](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.7...v1.1.8) (2025-05-23)
 
 
