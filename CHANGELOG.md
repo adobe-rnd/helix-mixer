@@ -1,3 +1,10 @@
+## [1.1.10](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.9...v1.1.10) (2025-06-05)
+
+
+### Bug Fixes
+
+* allow methods ([836b010](https://github.com/adobe-rnd/helix-mixer/commit/836b010dc9f448ff44d1f8feb14b8d9718acf546))
+
 ## [1.1.9](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.8...v1.1.9) (2025-06-04)
 
 
