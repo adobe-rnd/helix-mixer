@@ -57,12 +57,7 @@ export default {
    * @returns {Promise<import('@cloudflare/workers-types').Response>}
    */
   async fetch(request, env, pctx) {
-    if (request.method !== 'GET') {
-      return errorResponse(405, 'method not allowed');
-    }
-
     const ctx = makeContext(pctx, request, env);
-
     try {
       const overrides = Object.fromEntries(ctx.url.searchParams.entries());
       const config = await resolveConfig(ctx, overrides);
