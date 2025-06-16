@@ -124,11 +124,19 @@ export async function resolveConfig(ctx, overrides = {}) {
   // resolve path
   // prefer the path from backend config
   let backendPath = backend.path ?? '';
+  let protocol = backend.protocol ?? 'https';
   // but also allow the path to be set on the origin
   if (backend.origin.includes('/')) {
-    const parts = /^https?:\/\//.test(backend.origin)
-      ? backend.origin.split('/').slice(2)
-      : backend.origin.split('/');
+    let parts;
+    if (/^https?:\/\//.test(backend.origin)) {
+      // eslint-disable-next-line prefer-destructuring
+      protocol = backend.origin.split('://')[0];
+      parts = backend.origin.split('/').slice(2);
+    } else {
+      protocol = 'https';
+      parts = backend.origin.split('/');
+    }
+
     backend.origin = parts.shift(); // correct the origin to be pathless
     if (!backendPath) {
       backendPath = parts.join('/');
@@ -154,6 +162,7 @@ export async function resolveConfig(ctx, overrides = {}) {
     pattern,
     backend,
     origin: backend.origin,
+    protocol: backend.protocol || protocol,
     ...rawConfig,
     ...overrides,
   };

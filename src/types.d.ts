@@ -6,6 +6,7 @@ declare global {
   export interface BackendConfig {
     origin: string;
     path?: string;
+    protocol?: "http" | "https";
   }
 
   export interface RawConfig {
@@ -25,6 +26,7 @@ declare global {
     siteKey: string;
     pattern: string;
     backend: BackendConfig;
+    protocol: string;
     origin: string;
     pathname: string;
   }

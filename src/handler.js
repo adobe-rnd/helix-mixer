@@ -18,23 +18,20 @@ import { ffetch } from './util.js';
  */
 export default async function handler(ctx) {
   const { config } = ctx;
-  const { origin, pathname } = config;
+  const { protocol, origin, pathname } = config;
 
   const beurl = new URL(
     `${pathname}${ctx.url.search}`,
-    `${/^https?:\/\//.test(origin) ? origin : `https://${origin}`}`,
+    `${protocol}://${origin}`,
   );
   const isPipelineReq = beurl.origin === 'https://pipeline-cloudflare.adobecommerce.live';
 
   /** @type {import('@cloudflare/workers-types').Fetcher} */
   let impl;
   if (origin.endsWith('.magento.cloud')) {
-    ctx.log.debug('using mTLS fetcher');
     // @ts-ignore
     impl = ctx.CERT[config.siteKey];
-    if (!impl) {
-      ctx.log.warn(`missing mTLS fetcher for ${origin} (${config.siteKey})`);
-    }
+    ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
   }
   ctx.log.debug('fetching: ', beurl);
   const beresp = await ffetch(impl)(beurl.toString(), {
