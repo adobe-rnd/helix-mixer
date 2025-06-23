@@ -13,10 +13,75 @@
 import { ffetch } from './util.js';
 
 /**
- * @param {Context} ctx
- * @returns {Promise<import('@cloudflare/workers-types').Response>}
+ * @typedef {import('@cloudflare/workers-types').Request} Request
+ * @typedef {import('@cloudflare/workers-types').Response} Response
+ * @typedef {import('@cloudflare/workers-types').Fetcher} Fetcher
  */
-export default async function handler(ctx) {
+
+const BYO_CDN_TYPES = ['akamai', 'cloudflare', 'fastly', 'cloudfront'];
+
+/**
+ * @param {Context} ctx
+ * @param {Request} req
+ * @param {Response} beresp
+ * @returns {Record<string, string>}
+ */
+function pipelineRespHeaders(ctx, req, beresp) {
+  const { config } = ctx;
+
+  let byoCdnType = req.headers.get('x-byo-cdn-type');
+  const via = req.headers.get('via') || '';
+  const cdnLoop = req.headers.get('cdn-loop') || '';
+  // FIXME: cloudflare seems to strip the CDN-Loop header, i.e. the worker can't see it...
+  if (!BYO_CDN_TYPES.includes(byoCdnType)) {
+    // sniff downstream cdn type
+    if (/[Aa]kamai/.test(via)) {
+      byoCdnType = 'akamai';
+    } else if (via.includes('varnish') || cdnLoop.startsWith('Fastly')) {
+      byoCdnType = 'fastly';
+    } else if (cdnLoop.includes('cloudflare') || req.headers.has('cf-worker')) {
+      byoCdnType = 'cloudflare';
+    } else if (via.includes('CloudFront')) {
+      byoCdnType = 'cloudfront';
+    } else {
+      // invalid/unsupported CDN type
+      byoCdnType = undefined;
+    }
+  }
+
+  const headers = {
+    'x-robots-tag': 'noindex, nofollow',
+    'x-surrogate-key': undefined,
+  };
+
+  const cacheKeys = [...(beresp.headers.get('X-Surrogate-Key') || config.siteKey).split(/\s+/g)];
+  if (cacheKeys.length) {
+    switch (byoCdnType) {
+      case 'fastly':
+        headers['surrogate-key'] = cacheKeys.join(' ');
+        break;
+      case 'akamai':
+        headers['edge-cache-tag'] = cacheKeys.join(' ');
+        break;
+      case 'cloudflare':
+        headers['cache-tag'] = `${cacheKeys.join(',')},${config.siteKey}${ctx.url.pathname},${ctx.url.pathname}`;
+        break;
+      case 'cloudfront':
+        // cloudfront doesn't support cache tags/keys ...
+        break;
+      default:
+        break;
+    }
+  }
+  return headers;
+}
+
+/**
+ * @param {Context} ctx
+ * @param {Request} req
+ * @returns {Promise<Response>}
+ */
+export default async function handler(ctx, req) {
   const { config } = ctx;
   const { protocol, origin, pathname } = config;
 
@@ -26,7 +91,7 @@ export default async function handler(ctx) {
   );
   const isPipelineReq = beurl.origin === 'https://pipeline-cloudflare.adobecommerce.live';
 
-  /** @type {import('@cloudflare/workers-types').Fetcher} */
+  /** @type {Fetcher} */
   let impl;
   if (origin.endsWith('.magento.cloud')) {
     // @ts-ignore
@@ -49,13 +114,14 @@ export default async function handler(ctx) {
     },
   });
 
+  // @ts-ignore
   return new Response(beresp.body, {
     status: beresp.status,
     headers: {
-      ...Object.fromEntries(beresp.headers.entries()),
-      ...(isPipelineReq ? {
-        'x-robots-tag': 'noindex, nofollow',
-      } : {}),
+      ...Object.fromEntries([...beresp.headers.entries()].map(([k, v]) => [k.toLowerCase(), v])),
+      ...(isPipelineReq
+        ? pipelineRespHeaders(ctx, req, beresp)
+        : {}),
     },
   });
 }

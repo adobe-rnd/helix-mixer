@@ -129,6 +129,7 @@ export async function resolveConfig(ctx, overrides = {}) {
   if (backend.origin.includes('/')) {
     let parts;
     if (/^https?:\/\//.test(backend.origin)) {
+      // @ts-ignore
       // eslint-disable-next-line prefer-destructuring
       protocol = backend.origin.split('://')[0];
       parts = backend.origin.split('/').slice(2);
