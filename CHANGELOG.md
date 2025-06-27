@@ -1,3 +1,10 @@
+## [1.1.12](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.11...v1.1.12) (2025-06-27)
+
+
+### Bug Fixes
+
+* conditionally include x-robots-tag based on xfa ([70c9f34](https://github.com/adobe-rnd/helix-mixer/commit/70c9f345e4432a32053f1645ae09806995ae9d71))
+
 ## [1.1.11](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.10...v1.1.11) (2025-06-16)
 
 
