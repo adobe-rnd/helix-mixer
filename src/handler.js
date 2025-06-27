@@ -53,7 +53,7 @@ export default async function handler(ctx) {
     status: beresp.status,
     headers: {
       ...Object.fromEntries(beresp.headers.entries()),
-      ...(isPipelineReq ? {
+      ...(isPipelineReq && !ctx.info.headers['x-forwarded-host'] ? {
         'x-robots-tag': 'noindex, nofollow',
       } : {}),
     },
