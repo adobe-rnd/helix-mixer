@@ -37,6 +37,7 @@ export default async function handler(ctx) {
   const beresp = await ffetch(impl)(beurl.toString(), {
     method: ctx.info.method,
     body: ctx.info.body,
+    redirect: 'manual',
     headers: {
       ...ctx.info.headers,
       ...(isPipelineReq ? {
