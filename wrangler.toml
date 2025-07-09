@@ -43,5 +43,10 @@ kv_namespaces = [
 VERSION = "@@VERSION@@"
 ENVIRONMENT = "prod"
 
+[observability.logs]
+enabled = true
+head_sampling_rate = 0.1
+
+
 # [secrets]
 # PRODUCT_PIPELINE_TOKEN
