@@ -1,3 +1,10 @@
+## [1.1.14](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.13...v1.1.14) (2025-07-09)
+
+
+### Bug Fixes
+
+* enable 10% logging ([df09629](https://github.com/adobe-rnd/helix-mixer/commit/df096296f5cfa4e720f018503ea6eeb1e96faa08))
+
 ## [1.1.13](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.12...v1.1.13) (2025-07-07)
 
 
