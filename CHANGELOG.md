@@ -1,3 +1,10 @@
+## [1.1.16](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.15...v1.1.16) (2025-07-09)
+
+
+### Bug Fixes
+
+* logging tweak ([866e99d](https://github.com/adobe-rnd/helix-mixer/commit/866e99d27056583625ae653f788e9576268fba0f))
+
 ## [1.1.15](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.14...v1.1.15) (2025-07-09)
 
 
