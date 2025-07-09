@@ -43,7 +43,7 @@ kv_namespaces = [
 VERSION = "@@VERSION@@"
 ENVIRONMENT = "prod"
 
-[env.production.observability]
+[env.production.observability.logs]
 enabled = true
 head_sampling_rate = 1
 
