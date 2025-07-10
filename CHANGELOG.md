@@ -1,3 +1,10 @@
+## [1.1.17](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.16...v1.1.17) (2025-07-10)
+
+
+### Bug Fixes
+
+* remove cf object from be fetch ([25a44d7](https://github.com/adobe-rnd/helix-mixer/commit/25a44d788a97b50a779cf4c324ea454a75f5aa4d))
+
 ## [1.1.16](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.15...v1.1.16) (2025-07-09)
 
 
