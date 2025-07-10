@@ -1,3 +1,10 @@
+## [1.1.18](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.17...v1.1.18) (2025-07-10)
+
+
+### Bug Fixes
+
+* re-add no caching object ([#23](https://github.com/adobe-rnd/helix-mixer/issues/23)) ([1fa4548](https://github.com/adobe-rnd/helix-mixer/commit/1fa4548e4f0e88173f004643f03c77d74f450a92))
+
 ## [1.1.17](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.16...v1.1.17) (2025-07-10)
 
 
