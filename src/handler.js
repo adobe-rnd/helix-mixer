@@ -44,6 +44,10 @@ export default async function handler(ctx) {
         'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
       } : {}),
     },
+    cf: {
+      cacheEverything: false,
+      cacheTtl: 0,
+    },
   });
 
   return new Response(beresp.body, {
