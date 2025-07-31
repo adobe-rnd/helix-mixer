@@ -67,7 +67,15 @@ export async function resolveConfig(ctx, overrides = {}) {
   if (SOURCE === 'STORAGE') {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
-    const res = await ffetch()(`https://${siteKey}.aem.page/config.json`);
+    const configUrl = `https://config.aem-cloudflare.page/${siteKey}/config.json`;
+    const res = await ffetch()(configUrl, {
+      headers: {
+        'x-access-token': ctx.env.HLX_CONFIG_SERVICE_TOKEN,
+      },
+      cf: {
+        cacheTtlByStatus: { '100-599': -1 }, // bypass fetch cache
+      },
+    });
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
@@ -78,7 +86,7 @@ export async function resolveConfig(ctx, overrides = {}) {
         };
       } else {
         log.error('config fetch failed', res.status, res.headers.get('x-error') || res.statusText);
-        throw errorWithResponse(500, 'config fetch failed');
+        throw errorWithResponse(res.status, 'config fetch failed');
       }
     } else {
       const json = await res.json();
