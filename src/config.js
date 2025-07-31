@@ -67,7 +67,8 @@ export async function resolveConfig(ctx, overrides = {}) {
   if (SOURCE === 'STORAGE') {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
-    const res = await ffetch()(`https://${siteKey}.aem.page/config.json`);
+    const configUrl = `https://${siteKey}.aem.live/config.json`;
+    const res = await ffetch()(configUrl);
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
@@ -78,7 +79,7 @@ export async function resolveConfig(ctx, overrides = {}) {
         };
       } else {
         log.error('config fetch failed', res.status, res.headers.get('x-error') || res.statusText);
-        throw errorWithResponse(500, 'config fetch failed');
+        throw errorWithResponse(res.status, 'config fetch failed');
       }
     } else {
       const json = await res.json();
