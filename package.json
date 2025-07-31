@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "2.0.9",
+    "@adobe/fetch": "4.2.2",
     "@cloudflare/workers-types": "4.20250726.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/exec": "6.0.3",
