@@ -1,6 +1,4 @@
 import type { ExecutionContext, KVNamespace, Fetcher } from "@cloudflare/workers-types/experimental";
-import type { HTMLTemplate } from "./templates/html/HTMLTemplate.js";
-import { JSONTemplate } from "./templates/json/JSONTemplate.js";
 
 declare global {
   export interface BackendConfig {

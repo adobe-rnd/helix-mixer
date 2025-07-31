@@ -77,6 +77,7 @@ export async function resolveConfig(ctx, overrides = {}) {
           backends: {},
         };
       } else {
+        log.error('config fetch failed', res.status, res.headers.get('x-error') || res.statusText);
         throw errorWithResponse(500, 'config fetch failed');
       }
     } else {

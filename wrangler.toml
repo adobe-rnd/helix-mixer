@@ -7,10 +7,6 @@ send_metrics = false
 
 build = { command = "npm install && node build.js" }
 
-kv_namespaces = [
-  { binding = "CONFIGS", id = "a0591989eee1440894dc97da78f412a6", preview_id = "a0591989eee1440894dc97da78f412a6" }
-]
-
 [vars]
 VERSION = "@@VERSION@@-dev"
 ENVIRONMENT = "dev"
@@ -21,10 +17,6 @@ ENVIRONMENT = "dev"
 [env.ci]
 name = "helix-mixer-ci"
 
-kv_namespaces = [
-  { binding = "CONFIGS", id = "a0591989eee1440894dc97da78f412a6", preview_id = "a0591989eee1440894dc97da78f412a6" }
-]
-
 [env.ci.vars]
 VERSION = "@@VERSION@@-ci"
 ENVIRONMENT = "ci"
@@ -34,10 +26,6 @@ ENVIRONMENT = "ci"
 
 [env.production]
 name = "helix-mixer"
-
-kv_namespaces = [
-  { binding = "CONFIGS", id = "a0591989eee1440894dc97da78f412a6", preview_id = "a0591989eee1440894dc97da78f412a6" }
-]
 
 [env.production.vars]
 VERSION = "@@VERSION@@"
