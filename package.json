@@ -1,6 +1,6 @@
 {
   "name": "helix-mixer",
-  "version": "1.1.19",
+  "version": "1.1.20",
   "private": true,
   "description": "a mixing service",
   "main": "src/index.js",

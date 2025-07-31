@@ -1,3 +1,10 @@
+## [1.1.20](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.19...v1.1.20) (2025-07-31)
+
+
+### Bug Fixes
+
+* use aem.live for config, upgrade deps ([#25](https://github.com/adobe-rnd/helix-mixer/issues/25)) ([61b7909](https://github.com/adobe-rnd/helix-mixer/commit/61b7909bf8fd141a372ad252246a150919a95f5f))
+
 ## [1.1.19](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.18...v1.1.19) (2025-07-31)
 
 
