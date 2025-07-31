@@ -1,3 +1,10 @@
+## [1.1.19](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.18...v1.1.19) (2025-07-31)
+
+
+### Bug Fixes
+
+* log error, cleanup ([#24](https://github.com/adobe-rnd/helix-mixer/issues/24)) ([d5d30b1](https://github.com/adobe-rnd/helix-mixer/commit/d5d30b1d6e78203de9e12e1f8923b6ef2d1ee491))
+
 ## [1.1.18](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.17...v1.1.18) (2025-07-10)
 
 
