@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.0...v1.2.1) (2025-09-04)
+
+
+### Bug Fixes
+
+* force deploy ([779a5f6](https://github.com/adobe-rnd/helix-mixer/commit/779a5f6a6a73f50554022ecb8973f28d5397b312))
+
 # [1.2.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.20...v1.2.0) (2025-09-04)
 
 
