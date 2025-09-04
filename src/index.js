@@ -10,17 +10,17 @@
  * governing permissions and limitations under the License.
  */
 
-import { errorResponse } from './util.js';
 import { resolveConfig } from './config.js';
 import handler from './handler.js';
+import { errorResponse, isCustomDomain, resolveCustomDomain } from './util.js';
 
 /**
  * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
  * @param {import('@cloudflare/workers-types').Request} req
  * @param {Env} env
- * @returns {Context}
+ * @returns {Promise<Context>}
  */
-export function makeContext(ectx, req, env) {
+export async function makeContext(ectx, req, env) {
   /** @type {Context} */
   // @ts-ignore
   const ctx = {
@@ -30,6 +30,15 @@ export function makeContext(ectx, req, env) {
   ctx.attributes = {};
   ctx.env = env;
   ctx.url = new URL(req.url);
+  if (isCustomDomain(ctx.url) && ctx.url.hostname) {
+    const networkOrigin = await resolveCustomDomain(ctx.url.hostname);
+    if (networkOrigin) {
+      console.debug(`Resolving custom domain ${ctx.url.hostname} to ${networkOrigin}`);
+      ctx.url.host = networkOrigin;
+    } else {
+      console.warn(`Failed to resolve custom domain ${ctx.url.hostname}`);
+    }
+  }
   ctx.log = console;
   ctx.CERT = {};
   Object.entries(env).forEach(([k, v]) => {
@@ -57,7 +66,7 @@ export default {
    * @returns {Promise<import('@cloudflare/workers-types').Response>}
    */
   async fetch(request, env, pctx) {
-    const ctx = makeContext(pctx, request, env);
+    const ctx = await makeContext(pctx, request, env);
     try {
       const overrides = Object.fromEntries(ctx.url.searchParams.entries());
       const config = await resolveConfig(ctx, overrides);
