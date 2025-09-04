@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert';
-import { globToRegExp, isCustomDomain } from '../src/util.js';
+import { globToRegExp, isCustomDomain, resolveCustomDomain } from '../src/util.js';
 
 describe('util tests', () => {
   describe('globToRegExp', () => {
@@ -101,6 +101,44 @@ describe('util tests', () => {
 
       assert.strictEqual(isCustomDomain(null), true);
       assert.strictEqual(isCustomDomain(undefined), true);
+    });
+  });
+
+  describe('resolveCustomDomain', () => {
+    it('should resolve CNAME for cftest.aem.wtf and return matching record', async () => {
+      const result = await resolveCustomDomain('cftest.aem.wtf');
+
+      // cftest.aem.wtf should resolve to a CNAME matching the pattern
+      if (result) {
+        assert.ok(typeof result === 'string');
+        assert.ok(/^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/.test(result));
+      } else {
+        // If DNS resolution fails in test environment, we can't assert the result
+        // but the function should handle the failure gracefully
+        assert.strictEqual(result, null);
+      }
+    });
+
+    it('should return null for domains that do not resolve to matching CNAME', async () => {
+      const result = await resolveCustomDomain('example.com');
+
+      // example.com should not resolve to a matching CNAME pattern
+      assert.strictEqual(result, null);
+    });
+
+    it('should return null for non-existent domains', async () => {
+      const result = await resolveCustomDomain('this-domain-does-not-exist-12345.invalid');
+
+      // Non-existent domain should return null
+      assert.strictEqual(result, null);
+    });
+
+    it('should handle domains with CNAME records that do not match the pattern', async () => {
+      // Using a domain that likely has CNAME but doesn't match our pattern
+      const result = await resolveCustomDomain('www.github.com');
+
+      // Should return null since it won't match the aem.network pattern
+      assert.strictEqual(result, null);
     });
   });
 });

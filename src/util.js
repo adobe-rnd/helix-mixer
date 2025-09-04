@@ -107,3 +107,39 @@ export function isCustomDomain(url) {
 
   return !servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
 }
+
+/**
+ * Resolves a custom domain's CNAME record and returns it if it matches the
+ * pattern *--*--*.domains.aem.network
+ * @param {string} domain - The custom domain to resolve
+ * @returns {Promise<string|null>} - The CNAME record if it matches the pattern, null otherwise
+ */
+export async function resolveCustomDomain(domain) {
+  try {
+    // Use dynamic import to only load dns when needed
+    const dns = await import('node:dns');
+
+    // Resolve CNAME records for the domain
+    const cnameRecords = await dns.promises.resolve(domain, 'CNAME');
+
+    if (!cnameRecords || cnameRecords.length === 0) {
+      return null;
+    }
+
+    // Get the first CNAME record
+    const cname = cnameRecords[0];
+
+    // Check if it matches the pattern *--*--*.domains.aem.network
+    const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
+
+    if (pattern.test(cname)) {
+      return cname;
+    }
+
+    return null;
+  } catch (error) {
+    // If DNS resolution fails or domain doesn't exist, return null
+    console.debug(`Failed to resolve CNAME for ${domain}:`, error.message);
+    return null;
+  }
+}
