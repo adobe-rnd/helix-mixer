@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert';
-import { globToRegExp } from '../src/util.js';
+import { globToRegExp, isCustomDomain } from '../src/util.js';
 
 describe('util tests', () => {
   describe('globToRegExp', () => {
@@ -42,6 +42,65 @@ describe('util tests', () => {
       assert.ok(re instanceof RegExp);
       assert.ok(re.test('a/123'));
       assert.ok(!re.test('a/123/456'));
+    });
+  });
+
+  describe('isCustomDomain', () => {
+    it('should return false for .workers.dev domains', () => {
+      const url = new URL('https://example.workers.dev/path');
+      assert.strictEqual(isCustomDomain(url), false);
+    });
+
+    it('should return false for .aem.network domains', () => {
+      const url = new URL('https://site.aem.network/path');
+      assert.strictEqual(isCustomDomain(url), false);
+    });
+
+    it('should return false for .aem-mesh.live domains', () => {
+      const url = new URL('https://app.aem-mesh.live/path');
+      assert.strictEqual(isCustomDomain(url), false);
+    });
+
+    it('should return false for subdomain of service domains', () => {
+      const url1 = new URL('https://my-app.workers.dev');
+      const url2 = new URL('https://sub.domain.aem.network');
+      const url3 = new URL('https://test.site.aem-mesh.live');
+
+      assert.strictEqual(isCustomDomain(url1), false);
+      assert.strictEqual(isCustomDomain(url2), false);
+      assert.strictEqual(isCustomDomain(url3), false);
+    });
+
+    it('should return true for custom domains', () => {
+      const url1 = new URL('https://example.com/path');
+      const url2 = new URL('https://my-site.org');
+      const url3 = new URL('https://subdomain.example.net');
+
+      assert.strictEqual(isCustomDomain(url1), true);
+      assert.strictEqual(isCustomDomain(url2), true);
+      assert.strictEqual(isCustomDomain(url3), true);
+    });
+
+    it('should return true for domains that contain service patterns but do not end with them', () => {
+      const url1 = new URL('https://workers.dev.example.com');
+      const url2 = new URL('https://aem.network.custom.org');
+
+      assert.strictEqual(isCustomDomain(url1), true);
+      assert.strictEqual(isCustomDomain(url2), true);
+    });
+
+    it('should return true when URL hostname is null or undefined', () => {
+      const url = { hostname: null };
+      assert.strictEqual(isCustomDomain(url), true);
+
+      const url2 = { hostname: undefined };
+      assert.strictEqual(isCustomDomain(url2), true);
+
+      const url3 = {};
+      assert.strictEqual(isCustomDomain(url3), true);
+
+      assert.strictEqual(isCustomDomain(null), true);
+      assert.strictEqual(isCustomDomain(undefined), true);
     });
   });
 });

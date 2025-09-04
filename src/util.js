@@ -88,3 +88,22 @@ export function globToRegExp(glob) {
     .replaceAll('|', '.*');
   return new RegExp(`^${reString}$`);
 }
+
+/**
+ * Checks if a URL has a custom domain (not a known service domain)
+ * @param {URL} url - The URL object to check
+ * @returns {boolean} - false if hostname ends with known service patterns, true otherwise
+ */
+export function isCustomDomain(url) {
+  if (!url?.hostname) {
+    return true;
+  }
+
+  const servicePatterns = [
+    '.workers.dev',
+    '.aem.network',
+    '.aem-mesh.live',
+  ];
+
+  return !servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
+}
