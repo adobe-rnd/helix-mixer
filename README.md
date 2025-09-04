@@ -1,6 +1,6 @@
 # helix-mixer
 
-A Cloudflare Worker service that acts as a smart reverse proxy for Adobe Helix sites, routing requests to different backends based on configurable URL patterns.
+A Cloudflare Worker service that acts as a smart reverse proxy for Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service with document-based authoring sites, routing requests to different backends based on configurable URL patterns.
 
 ## Overview
 
@@ -19,7 +19,7 @@ All requests are proxied based on the configured patterns. The service itself do
 
 ### URL Structure
 ```
-https://{ref}--{site}--{org}.helix-mixer.workers.dev/{path}
+https://{ref}--{site}--{org}.aem.network/{path}
 ```
 
 Where:
@@ -37,22 +37,19 @@ Configuration is fetched from `https://{ref}--{site}--{org}.aem.live/config.json
   "public": {
     "mixerConfig": {
       "patterns": {
-        "/api/**": "api-backend",
-        "/assets/**": "cdn-backend", 
-        "/blog/*": "cms-backend",
+        "/graphql/**": "commerce-backend",
+        "/api/catalog/**": "commerce-backend",
+        "/blog/**": "legacy-cms-backend",
         "default": "main-backend"
       },
       "backends": {
-        "api-backend": {
-          "origin": "api.example.com",
-          "protocol": "https",
-          "path": "/v1"
+        "commerce-backend": {
+          "origin": "commerce.example.com",
+          "protocol": "https"
         },
-        "cdn-backend": {
-          "origin": "cdn.example.com"
-        },
-        "cms-backend": {
-          "origin": "cms.example.com/content"
+        "legacy-cms-backend": {
+          "origin": "legacy-blog.example.com",
+          "path": "/wp-content"
         },
         "main-backend": {
           "origin": "main--site--org.aem.live"
@@ -81,9 +78,9 @@ Defines backend configurations:
 ### Example Routing
 
 With the above configuration:
-- `GET /api/users` → routed to `https://api.example.com/v1/api/users`
-- `GET /assets/logo.png` → routed to `https://cdn.example.com/assets/logo.png`
-- `GET /blog/post-1` → routed to `https://cms.example.com/content/blog/post-1`
+- `GET /graphql` → routed to `https://commerce.example.com/graphql`
+- `POST /api/catalog/search` → routed to `https://commerce.example.com/api/catalog/search`
+- `GET /blog/latest-posts` → routed to `https://legacy-blog.example.com/wp-content/blog/latest-posts`
 - `GET /about` → routed to `https://main--site--org.aem.live/about` (default)
 
 ## Special Features
