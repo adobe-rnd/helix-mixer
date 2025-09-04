@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.20...v1.2.0) (2025-09-04)
+
+
+### Features
+
+* add isCustomDomain utility function with tests ([20b5531](https://github.com/adobe-rnd/helix-mixer/commit/20b5531a335b26b7b102a057b85746ef54ad630e))
+* add resolveCustomDomain function with DNS lookup ([784cbf7](https://github.com/adobe-rnd/helix-mixer/commit/784cbf782db9e3908b07784e71bf0edfbb48fde6))
+
 ## [1.1.20](https://github.com/adobe-rnd/helix-mixer/compare/v1.1.19...v1.1.20) (2025-07-31)
 
 
