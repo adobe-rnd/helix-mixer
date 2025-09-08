@@ -55,21 +55,19 @@ providers
         await fetchContext.reset();
       });
 
-      it('returns 404 for invalid site', async function invalidSiteTest() {
-        this.timeout(4000);
+      it('returns 404 for invalid site', async () => {
         const { url, ...opts } = getFetchOptions('/missing', 'main', 'site', 'owner');
         const res = await fetch(url, opts);
 
         assert.strictEqual(res.status, 404, await res.text());
         assert.strictEqual(res.headers.get('x-error').substring(0, 21), 'Missing configuration');
-      });
+      }).timeout(4000);
 
-      it('returns 200 for Helix Homepage', async function helixHomepageTest() {
-        this.timeout(4000);
+      it('returns 200 for Helix Homepage', async () => {
         const { url, ...opts } = getFetchOptions('/', 'main', 'helix-website', 'adobe');
         const res = await fetch(url, opts);
 
         assert.strictEqual(res.status, 200, await res.text());
-      });
+      }).timeout(4000);
     });
   });
