@@ -110,64 +110,36 @@ describe('dns tests', () => {
     }
   });
 
-  it('resolves via DoH when tryNative=false and CNAME matches', async () => {
+  it('resolves via DoH when CNAME matches', async () => {
     const target = 'ref--site--org.domains.aem.network.';
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, 'ref--site--org.domains.aem.network');
   });
 
   it('returns null for DoH non-matching CNAME', async () => {
     const target = 'not-matching.example.com.';
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, null);
   });
 
   it('returns null when DoH returns no answers', async () => {
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', includeAnswer: false });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, null);
   });
 
   it('returns null when DoH answer is not a CNAME', async () => {
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: 'ignored.', ansType: 1 });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, null);
   });
 
   it('returns null when DoH !ok', async () => {
     global.fetch = async () => ({ ok: false, arrayBuffer: async () => new ArrayBuffer(0) });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, null);
-  });
-
-  it('falls back to DoH if node:dns fails', async () => {
-    const dns = await import('node:dns');
-    const orig = dns.promises.resolve;
-    dns.promises.resolve = async () => {
-      throw new Error('boom');
-    };
-    try {
-      const target = 'ref--site--org.domains.aem.network.';
-      global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
-      const cname = await resolveCustomDomain('foo.example.com', true);
-      assert.strictEqual(cname, 'ref--site--org.domains.aem.network');
-    } finally {
-      dns.promises.resolve = orig;
-    }
-  });
-
-  it('uses node:dns path when tryNative=true and returns first CNAME', async () => {
-    const dns = await import('node:dns');
-    const orig = dns.promises.resolve;
-    dns.promises.resolve = async () => ['ref--site--org.domains.aem.network.'];
-    try {
-      const cname = await resolveCustomDomain('foo.example.com', true);
-      assert.strictEqual(cname, 'ref--site--org.domains.aem.network');
-    } finally {
-      dns.promises.resolve = orig;
-    }
   });
 
   it('covers b64url fallback branch (no Buffer, with btoa)', async () => {
@@ -180,7 +152,7 @@ describe('dns tests', () => {
     global.btoa = (s) => origBuffer.from(s, 'binary').toString('base64');
     const target = 'ref--site--org.domains.aem.network.';
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
-    const cname = await resolveCustomDomain('foo.example.com', false);
+    const cname = await resolveCustomDomain('foo.example.com');
     assert.strictEqual(cname, 'ref--site--org.domains.aem.network');
   });
 });

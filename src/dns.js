@@ -157,30 +157,13 @@ async function resolveCnameViaDoH(domain) {
 }
 
 /**
- * Resolve custom domains to network origin CNAMEs.
- * Cloudflare/Node: use node:dns; otherwise DoH GET.
+ * Resolve custom domains to network origin CNAMEs using DNS-over-HTTPS.
+ * Uses DoH GET for universal edge compatibility.
  * @param {string} domain
  * @returns {Promise<string|null>}
  */
-export async function resolveCustomDomain(domain, tryNative = (typeof process !== 'undefined')) {
+export async function resolveCustomDomain(domain) {
   const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
-  // Prefer Node DNS when available (e.g., Cloudflare with node_compat)
-  if (tryNative) {
-    try {
-      // Build the specifier dynamically so bundlers don’t try to resolve it
-      const spec = 'node:dns';
-      // @ts-ignore dynamic import
-      const dns = await import(spec);
-      const recs = await dns.promises.resolve(domain, 'CNAME');
-      if (Array.isArray(recs) && recs.length) {
-        const cname = recs[0].replace(/\.$/, '');
-        return pattern.test(cname) ? cname : null;
-      }
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.debug(`node:dns CNAME failed for ${domain}: ${e.message}`);
-    }
-  }
   try {
     const cname = await resolveCnameViaDoH(domain);
     return cname && pattern.test(cname) ? cname : null;

@@ -110,7 +110,7 @@ describe('dns live tests (Google DoH)', function suite() {
   this.retries(2);
 
   it('returns null for example.com (not an AEM custom domain)', async () => {
-    const cname = await resolveCustomDomain('example.com', false); // force DoH path
+    const cname = await resolveCustomDomain('example.com'); // uses DoH
     assert.strictEqual(cname, null);
   });
 

@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
-    "build": "node build.js",
+    "build": "hedy --build --verbose",
     "lint": "eslint . --ext js,cjs,mjs",
     "test": "c8 --all --include 'src/**/*.js' mocha -i -g 'Post-Deploy' --spec 'test/**/*.test.js'",
     "dev": "if test -e .dev.vars; then wrangler dev --; else echo \"Need a .dev.vars files before starting local dev server\"; fi",
@@ -50,9 +50,7 @@
     "distDirectory": "bin/dist",
     "entryFile": "src/index.js",
     "plugin": "@adobe/helix-deploy-plugin-edge",
-    "edgeExternals": [
-      "node:dns"
-    ],
+    "edgeExternals": [],
     "fastlyGateway": "deploy-test.anywhere.run",
     "package": {
       "name": "helix3"
