@@ -10,36 +10,64 @@
  * governing permissions and limitations under the License.
  */
 
-import assert from 'assert';
 import { h1NoCache } from '@adobe/fetch';
+import assert from 'assert';
 import { config } from 'dotenv';
 
 config();
 
-/**
- * @param {string} path
- * @returns {{url: URL} & RequestInit}
- */
-function getFetchOptions(path) {
-  return {
-    url: new URL(`https://helix-mixer-ci.adobeaem.workers.dev${path}`),
-    cache: 'no-store',
-    redirect: 'manual',
-  };
-}
+const providers = [
+  {
+    name: 'cloudflare',
+    proddomain: 'aem.network',
+    cidomain: 'cloudflareci.aem-mesh.live',
+  },
+  {
+    name: 'fastly',
+    // proddomain: 'aem.network', // not yet, activate when multi-cloud certs have been issued
+    cidomain: 'fastlyci.aem.network',
+  },
+];
 
-describe('Post-Deploy Tests', () => {
-  const fetchContext = h1NoCache();
+providers
+  .map((env) => (process.env.TEST_PRODUCTION ? env.proddomain : env.cidomain))
+  .filter((domain) => !!domain)
+  .forEach((domain) => {
+  /**
+   * @param {string} path
+   * @param {string} ref
+   * @param {string} site
+   * @param {string} owner
+   * @returns {{url: URL} & RequestInit}
+   */
+    function getFetchOptions(path, ref, site, owner) {
+      return {
+        url: new URL(`https://${ref}--${site}--${owner}.${domain}${path}`),
+        cache: 'no-store',
+        redirect: 'manual',
+      };
+    }
 
-  after(async () => {
-    await fetchContext.reset();
+    describe(`Post-Deploy Tests (${domain})`, () => {
+      const fetchContext = h1NoCache();
+
+      after(async () => {
+        await fetchContext.reset();
+      });
+
+      it('returns 404 for invalid site', async () => {
+        const { url, ...opts } = getFetchOptions('/missing', 'main', 'site', 'owner');
+        const res = await fetch(url, opts);
+
+        assert.strictEqual(res.status, 404, await res.text());
+        assert.strictEqual(res.headers.get('x-error').substring(0, 21), 'Missing configuration');
+      }).timeout(4000);
+
+      it('returns 200 for Helix Homepage', async () => {
+        const { url, ...opts } = getFetchOptions('/', 'main', 'helix-website', 'adobe');
+        const res = await fetch(url, opts);
+
+        assert.strictEqual(res.status, 200, await res.text());
+      }).timeout(4000);
+    });
   });
-
-  it('returns 404 for missing site param', async () => {
-    const { url, ...opts } = getFetchOptions('/missing');
-    const res = await fetch(url, opts);
-
-    assert.strictEqual(res.status, 404);
-    assert.strictEqual(res.headers.get('x-error'), 'missing org');
-  });
-});
