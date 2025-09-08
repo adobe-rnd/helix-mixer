@@ -60,7 +60,14 @@ providers
         const res = await fetch(url, opts);
 
         assert.strictEqual(res.status, 404, await res.text());
-        assert.strictEqual(res.headers.get('x-error'), 'missing org');
+        assert.strictEqual(res.headers.get('x-error').substring(0, 21), 'Missing configuration');
+      });
+
+      it('returns 200 for Helix Homepage', async () => {
+        const { url, ...opts } = getFetchOptions('/', 'main', 'helix-website', 'adobe');
+        const res = await fetch(url, opts);
+
+        assert.strictEqual(res.status, 200, await res.text());
       });
     });
   });
