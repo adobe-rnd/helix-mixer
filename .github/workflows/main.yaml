@@ -33,16 +33,15 @@ jobs:
         with:
           node-version: lts/*
       - run: npm ci
-      - name: Build edge bundle
-        run: npm run fastly-build
-      - name: Deploy via helix-deploy
+      - name: Deploy via helix-deploy (CI)
         env:
-          HLX_FASTLY_CI_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
-          HLX_FASTLY_CI_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
+          HLX_FASTLY_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
+          HLX_FASTLY_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
           HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
           HLX_CLOUDFLARE_ACCOUNT: ${{ secrets.HLX_CLOUDFLARE_ACCOUNT }}
           HLX_CLOUDFLARE_AUTH: ${{ secrets.HLX_CLOUDFLARE_AUTH }}
-        run: HLX_FASTLY_AUTH=$HLX_FASTLY_CI_AUTH HLX_FASTLY_SVC=$HLX_FASTLY_CI_ID HLX_CLOUDFLARE_NAME=helix-mixer-ci npm run deploy:edge
+          HLX_CLOUDFLARE_NAME: helix-mixer-ci
+        run: npm run deploy:ci
       - name: Wait for service to update
         run: sleep 45
       - name: Post-Deployment Tests
@@ -65,6 +64,11 @@ jobs:
         run: npm run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          # CI (prepare) deployment env
+          HLX_FASTLY_CI_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
+          HLX_FASTLY_CI_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
+          # Production (publish) deployment env
+          HLX_FASTLY_ID: ${{ secrets.HLX_FASTLY_ID }}
           HLX_FASTLY_AUTH: ${{ secrets.HLX_FASTLY_AUTH }}
           HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
           HLX_CLOUDFLARE_ACCOUNT: ${{ secrets.HLX_CLOUDFLARE_ACCOUNT }}
