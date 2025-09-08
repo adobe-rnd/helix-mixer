@@ -55,7 +55,8 @@ providers
         await fetchContext.reset();
       });
 
-      it('returns 404 for invalid site', async () => {
+      it('returns 404 for invalid site', async function invalidSiteTest() {
+        this.timeout(4000);
         const { url, ...opts } = getFetchOptions('/missing', 'main', 'site', 'owner');
         const res = await fetch(url, opts);
 
@@ -63,7 +64,8 @@ providers
         assert.strictEqual(res.headers.get('x-error').substring(0, 21), 'Missing configuration');
       });
 
-      it('returns 200 for Helix Homepage', async () => {
+      it('returns 200 for Helix Homepage', async function helixHomepageTest() {
+        this.timeout(4000);
         const { url, ...opts } = getFetchOptions('/', 'main', 'helix-website', 'adobe');
         const res = await fetch(url, opts);
 
