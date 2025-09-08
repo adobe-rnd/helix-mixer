@@ -162,11 +162,10 @@ async function resolveCnameViaDoH(domain) {
  * @param {string} domain
  * @returns {Promise<string|null>}
  */
-export async function resolveCustomDomain(domain) {
+export async function resolveCustomDomain(domain, tryNative = (typeof process !== 'undefined')) {
   const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
   // Prefer Node DNS when available (e.g., Cloudflare with node_compat)
-  const nodeish = typeof process !== 'undefined' && !!process.versions?.node;
-  if (nodeish) {
+  if (tryNative) {
     try {
       // Build the specifier dynamically so bundlers don’t try to resolve it
       const spec = 'node:dns';
