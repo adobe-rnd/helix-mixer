@@ -16,6 +16,8 @@
     "deploy:dev": "node prepare-deploy.js && wrangler deploy -c wrangler-versioned.toml",
     "deploy:ci": "node prepare-deploy.js && wrangler deploy -e ci  -c wrangler-versioned.toml",
     "deploy:production": "node prepare-deploy.js && wrangler deploy -e production -c wrangler-versioned.toml",
+    "fastly-build": "hedy --build --verbose",
+    "deploy:edge": "hedy --build --verbose --deploy --fastly-auth $HLX_FASTLY_AUTH --compute-service-id ${HLX_FASTLY_SVC:-} --cloudflare-email $HLX_CLOUDFLARE_EMAIL --cloudflare-account-id $HLX_CLOUDFLARE_ACCOUNT --cloudflare-auth $HLX_CLOUDFLARE_AUTH --name ${HLX_CLOUDFLARE_NAME:-helix-mixer-ci}",
     "log": "wrangler tail --format pretty",
     "log:ci": "wrangler tail --format pretty -e ci",
     "log:production": "wrangler tail --format pretty -e production",
@@ -39,8 +41,24 @@
     "reporter": "mocha-multi-reporters",
     "reporter-options": "configFile=.mocha-multi.json"
   },
+  "wsk": {
+    "target": [
+      "c@e",
+      "cloudflare"
+    ],
+    "arch": "edge",
+    "distDirectory": "bin/dist",
+    "entryFile": "src/universal.mjs",
+    "plugin": "@adobe/helix-deploy-plugin-edge",
+    "fastlyGateway": "deploy-test.anywhere.run",
+    "package": {
+      "name": "helix3"
+    }
+  },
   "devDependencies": {
     "@adobe/eslint-config-helix": "2.0.9",
+    "@adobe/helix-deploy": "^12.4.39",
+    "@adobe/helix-deploy-plugin-edge": "^1.0.11",
     "@adobe/fetch": "4.2.2",
     "@cloudflare/workers-types": "4.20250726.0",
     "@semantic-release/changelog": "6.0.3",

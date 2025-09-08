@@ -16,30 +16,50 @@ import { config } from 'dotenv';
 
 config();
 
-/**
- * @param {string} path
- * @returns {{url: URL} & RequestInit}
- */
-function getFetchOptions(path) {
-  return {
-    url: new URL(`https://helix-mixer-ci.adobeaem.workers.dev${path}`),
-    cache: 'no-store',
-    redirect: 'manual',
-  };
-}
+const providers = [
+  {
+    name: 'cloudflare',
+    proddomain: process.env.HLX_CLOUDFLARE_PROD_DOMAIN || 'helix-mixer.workers.dev',
+    cidomain: process.env.HLX_CLOUDFLARE_CI_DOMAIN || 'helix-mixer-ci.adobeaem.workers.dev',
+  },
+  {
+    name: 'fastly',
+    proddomain: process.env.HLX_FASTLY_PROD_DOMAIN || 'helix-mixer.edgecompute.app',
+    cidomain: process.env.HLX_FASTLY_CI_DOMAIN || 'helix-mixer-ci.edgecompute.app',
+  },
+];
 
-describe('Post-Deploy Tests', () => {
-  const fetchContext = h1NoCache();
+providers.forEach((env) => {
+  const domain = process.env.CI ? env.cidomain : env.proddomain;
 
-  after(async () => {
-    await fetchContext.reset();
-  });
+  /**
+   * @param {string} path
+   * @returns {{url: URL} & RequestInit}
+   */
+  function getFetchOptions(path) {
+    return {
+      url: new URL(`https://${domain}${path}`),
+      cache: 'no-store',
+      redirect: 'manual',
+    };
+  }
 
-  it('returns 404 for missing site param', async () => {
-    const { url, ...opts } = getFetchOptions('/missing');
-    const res = await fetch(url, opts);
+  describe(`Post-Deploy Tests (${env.name})`, () => {
+    const fetchContext = h1NoCache();
 
-    assert.strictEqual(res.status, 404);
-    assert.strictEqual(res.headers.get('x-error'), 'missing org');
+    after(async () => {
+      await fetchContext.reset();
+    });
+
+    it('returns 404 for missing site param', async function test() {
+      if (!process.env.TEST_INTEGRATION) {
+        this.skip();
+      }
+      const { url, ...opts } = getFetchOptions('/missing');
+      const res = await fetch(url, opts);
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(res.headers.get('x-error'), 'missing org');
+    });
   });
 });

@@ -1,6 +1,6 @@
 # helix-mixer
 
-A Cloudflare Worker service that acts as a smart reverse proxy for Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service with document-based authoring sites, routing requests to different backends based on configurable URL patterns.
+A universal edge service (Cloudflare Workers + Fastly Compute@Edge) that acts as a smart reverse proxy for Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service with document-based authoring sites, routing requests to different backends based on configurable URL patterns.
 
 ## Overview
 
@@ -99,12 +99,17 @@ With the above configuration:
 - Missing backends automatically fallback to `{ref}--{site}--{org}.aem.live`
 - All requests are proxied with cache disabled (`cacheEverything: false`)
 
+### DNS Lookup (Custom Domains)
+- Cloudflare: uses Node’s `dns` API (`nodejs_compat`) for CNAME resolution.
+- Fastly: uses DNS-over-HTTPS (RFC 8484) with GET to `/dns-query?dns=...` for better cacheability. Requests use a dynamic backend to `dns.google`; if unavailable, code falls back to the `gateway` backend set up by helix‑deploy.
+
 ## Development
 
 ### Prerequisites
 - Node.js 18+
 - npm or equivalent package manager
-- Wrangler CLI for Cloudflare Workers
+- Wrangler CLI for Cloudflare Workers (optional, for local dev)
+- helix-deploy (installed via devDependencies) for universal build/deploy
 
 ### Setup
 ```bash
@@ -112,13 +117,13 @@ npm install
 ```
 
 ### Available Scripts
-- `npm run dev` - Start local development server (requires `.dev.vars`)
-- `npm run build` - Build the worker
-- `npm test` - Run test suite with coverage
+- `npm run dev` - Start local Cloudflare dev server (requires `.dev.vars`)
+- `npm run build` - Build the worker bundle for Cloudflare
+- `npm test` - Run unit tests with coverage
 - `npm run lint` - Run ESLint
-- `npm run deploy:dev` - Deploy to development environment
-- `npm run deploy:ci` - Deploy to CI environment  
-- `npm run deploy:production` - Deploy to production
+- `npm run fastly-build` - Build universal edge bundle with helix-deploy (hedy)
+- `npm run deploy:edge` - Deploy to Cloudflare and Fastly using helix-deploy + plugin-edge
+- `npm run deploy:dev|deploy:ci|deploy:production` - Legacy Cloudflare-only deploys via wrangler
 
 ### Environment Variables
 Create a `.dev.vars` file for local development:
@@ -136,13 +141,20 @@ npm test
 
 ## Deployment
 
-The service is deployed to Cloudflare Workers across three environments:
+### Universal Edge (recommended)
+- Uses `@adobe/helix-deploy` with `@adobe/helix-deploy-plugin-edge` to package and deploy for both providers.
+- GitHub Actions workflows `build-edge` (for branches) and `semantic-release-edge` (for `main`) run tests, build, deploy, and execute post‑deploy tests.
 
-- **Development**: `helix-mixer-dev.workers.dev`
-- **CI**: `helix-mixer-ci.workers.dev`  
-- **Production**: `helix-mixer.workers.dev`
+Required GitHub secrets (ask maintainers for values):
+- `HLX_FASTLY_CI_ID`, `HLX_FASTLY_CI_AUTH` (for CI deployments) and `HLX_FASTLY_AUTH` (for release)
+- `HLX_CLOUDFLARE_EMAIL`, `HLX_CLOUDFLARE_ACCOUNT`, `HLX_CLOUDFLARE_AUTH`
 
-Deployment uses semantic-release for automated versioning and is triggered via GitHub Actions.
+Domains used in post‑deploy tests can be overridden via env:
+- `HLX_CLOUDFLARE_CI_DOMAIN`, `HLX_CLOUDFLARE_PROD_DOMAIN`
+- `HLX_FASTLY_CI_DOMAIN`, `HLX_FASTLY_PROD_DOMAIN`
+
+### Cloudflare-only (legacy)
+The previous `wrangler`-based flows remain available for development or fallback.
 
 ## License
 

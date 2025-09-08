@@ -1,0 +1,35 @@
+name: cleanup-fastly
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  Cleanup-Fastly-Service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up GitHub CLI
+        run: echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+      - name: Download Fastly CLI
+        run: |
+          mkdir ~/.bin && curl -L https://github.com/fastly/cli/releases/download/v0.31.0/fastly_v0.31.0_linux-386.tar.gz | tar zxv
+      - name: Delete Stale Services
+        env:
+          FASTLY_AUTH: ${{ secrets.FASTLY_AUTH }}
+        run: |
+          repo=$(echo "${{ github.repository }}" | sed -e "s;.*/;;")
+          ./fastly service list -t $FASTLY_AUTH | grep -E "^$repo"- | while read -r line
+          do
+              read -ra parts <<< "$line"
+              name=${parts[0]}
+              id=${parts[1]}
+              version=${parts[3]}
+              branch=$(echo ${name} | sed -e s/^$repo-//)
+              if ! gh api repos/{owner}/{repo}/branches/$branch --silent; then
+                  echo "no matching branch for $name – '$id' should be deleted";
+                  ./fastly service-version deactivate -t $FASTLY_AUTH -s $id --version active
+                  ./fastly service delete -t $FASTLY_AUTH -s $id
+              fi
+          done
+

@@ -41,11 +41,21 @@ export async function makeContext(ectx, req, env) {
   }
   ctx.log = console;
   ctx.CERT = {};
-  Object.entries(env).forEach(([k, v]) => {
-    if (k.startsWith('CERT_')) {
-      ctx.CERT[k.slice('CERT_'.length)] = v;
-    }
-  });
+  try {
+    Object.entries(env).forEach(([k, v]) => {
+      if (k.startsWith('CERT_')) {
+        ctx.CERT[k.slice('CERT_'.length)] = v;
+      }
+    });
+  } catch {
+    // ignore
+  }
+  if (!Object.keys(ctx.CERT).length) {
+    // Fallback for non-enumerable env proxies (e.g., helix-deploy plugin-edge adapters)
+    ctx.CERT = new Proxy({}, {
+      get: (_, prop) => env[`CERT_${String(prop)}`],
+    });
+  }
   ctx.info = {
     subdomain: ctx.url.hostname.split('.')[0],
     method: req.method,
