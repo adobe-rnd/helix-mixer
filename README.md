@@ -101,7 +101,7 @@ With the above configuration:
 
 ### DNS Lookup (Custom Domains)
 - Cloudflare: uses Node’s `dns` API (`nodejs_compat`) for CNAME resolution.
-- Fastly: uses DNS-over-HTTPS (RFC 8484) with GET to `/dns-query?dns=...` for better cacheability. Requests use a dynamic backend to `dns.google`; if unavailable, code falls back to the `gateway` backend set up by helix‑deploy.
+- Fastly and other edge runtimes: use DNS-over-HTTPS (RFC 8484) with GET to `/dns-query?dns=...`, leveraging dynamic backends to `dns.google` for cacheability and performance.
 
 ## Development
 
@@ -153,8 +153,8 @@ Domains used in post‑deploy tests can be overridden via env:
 - `HLX_CLOUDFLARE_CI_DOMAIN`, `HLX_CLOUDFLARE_PROD_DOMAIN`
 - `HLX_FASTLY_CI_DOMAIN`, `HLX_FASTLY_PROD_DOMAIN`
 
-### Cloudflare-only (legacy)
-The previous `wrangler`-based flows remain available for development or fallback.
+### CI/CD
+The unified workflow `.github/workflows/main.yaml` runs branch CI (build, deploy, post‑deploy test) and main branch releases.
 
 ## License
 

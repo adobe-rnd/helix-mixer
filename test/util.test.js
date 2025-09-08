@@ -11,7 +11,8 @@
  */
 
 import assert from 'node:assert';
-import { globToRegExp, isCustomDomain, resolveCustomDomain } from '../src/util.js';
+import { globToRegExp, isCustomDomain } from '../src/util.js';
+import { resolveCustomDomain } from '../src/dns.js';
 
 describe('util tests', () => {
   describe('globToRegExp', () => {

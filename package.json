@@ -48,7 +48,7 @@
     ],
     "arch": "edge",
     "distDirectory": "bin/dist",
-    "entryFile": "src/universal.mjs",
+    "entryFile": "src/index.js",
     "plugin": "@adobe/helix-deploy-plugin-edge",
     "fastlyGateway": "deploy-test.anywhere.run",
     "package": {

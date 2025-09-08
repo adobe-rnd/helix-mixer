@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Adobe. All rights reserved.
+ * Copyright 2025 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -12,7 +12,8 @@
 
 import { resolveConfig } from './config.js';
 import handler from './handler.js';
-import { errorResponse, isCustomDomain, resolveCustomDomain } from './util.js';
+import { errorResponse, isCustomDomain } from './util.js';
+import { resolveCustomDomain } from './dns.js';
 
 /**
  * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
@@ -68,32 +69,38 @@ export async function makeContext(ectx, req, env) {
   return ctx;
 }
 
-export default {
-  /**
-   * @param {import('@cloudflare/workers-types').Request} request
-   * @param {Env} env
-   * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} pctx
-   * @returns {Promise<import('@cloudflare/workers-types').Response>}
-   */
-  async fetch(request, env, pctx) {
-    const ctx = await makeContext(pctx, request, env);
-    try {
-      const overrides = Object.fromEntries(ctx.url.searchParams.entries());
-      const config = await resolveConfig(ctx, overrides);
-      ctx.config = config;
+/**
+ * Universal entrypoint used by helix-deploy edge adapters and Cloudflare.
+ * @param {Request} request
+ * @param {object} context
+ */
+export async function main(request, context = {}) {
+  const env = context.env || {};
+  const pctx = context.executionContext || {};
+  const ctx = await makeContext(pctx, request, env);
+  try {
+    const overrides = Object.fromEntries(ctx.url.searchParams.entries());
+    const config = await resolveConfig(ctx, overrides);
+    ctx.config = config;
 
-      ctx.log.debug('resolved config: ', JSON.stringify(config));
-      if (!config) {
-        return errorResponse(404, 'config not found');
-      }
-
-      return await handler(ctx);
-    } catch (e) {
-      if (e.response) {
-        return e.response;
-      }
-      ctx.log.error(e);
-      return errorResponse(500, 'internal server error');
+    ctx.log.debug('resolved config: ', JSON.stringify(config));
+    if (!config) {
+      return errorResponse(404, 'config not found');
     }
+
+    return await handler(ctx);
+  } catch (e) {
+    if (e.response) {
+      return e.response;
+    }
+    ctx.log.error(e);
+    return errorResponse(500, 'internal server error');
+  }
+}
+
+// Cloudflare Worker runtime support (local dev, wrangler)
+export default {
+  async fetch(request, env, pctx) {
+    return main(request, { env, executionContext: pctx });
   },
 };
