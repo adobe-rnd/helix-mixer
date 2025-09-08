@@ -50,6 +50,9 @@
     "distDirectory": "bin/dist",
     "entryFile": "src/index.js",
     "plugin": "@adobe/helix-deploy-plugin-edge",
+    "edgeExternals": [
+      "node:dns"
+    ],
     "fastlyGateway": "deploy-test.anywhere.run",
     "package": {
       "name": "helix3"
@@ -57,10 +60,9 @@
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "2.0.9",
-    "@adobe/helix-deploy": "^13.0.0",
-    "@adobe/helix-deploy-plugin-edge": "^1.1.6",
-    "@adobe/helix-deploy-plugin-webpack": "^1.0.2",
     "@adobe/fetch": "4.2.2",
+    "@adobe/helix-deploy": "12.4.39",
+    "@adobe/helix-deploy-plugin-edge": "1.1.1",
     "@cloudflare/workers-types": "4.20250726.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/exec": "6.0.3",
@@ -83,6 +85,7 @@
     "sinon": "^19.0.2",
     "wrangler": "4.26.1"
   },
+  "dependencies": {},
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
   }

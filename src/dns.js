@@ -164,17 +164,20 @@ async function resolveCnameViaDoH(domain) {
  */
 export async function resolveCustomDomain(domain) {
   const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
+  // Prefer Node DNS when available (e.g., Cloudflare with node_compat)
   const nodeish = typeof process !== 'undefined' && !!process.versions?.node;
   if (nodeish) {
     try {
-      const dns = await import('node:dns');
+      // Build the specifier dynamically so bundlers don’t try to resolve it
+      const spec = 'node:dns';
+      // @ts-ignore dynamic import
+      const dns = await import(spec);
       const recs = await dns.promises.resolve(domain, 'CNAME');
       if (Array.isArray(recs) && recs.length) {
         const cname = recs[0].replace(/\.$/, '');
         return pattern.test(cname) ? cname : null;
       }
     } catch (e) {
-      // fall through to DoH
       // eslint-disable-next-line no-console
       console.debug(`node:dns CNAME failed for ${domain}: ${e.message}`);
     }
