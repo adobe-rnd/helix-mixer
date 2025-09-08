@@ -20,7 +20,7 @@ const providers = [
   {
     name: 'cloudflare',
     proddomain: 'aem.network',
-    cidomain: 'cloudflareci.aem.network',
+    cidomain: 'cloudflareci.aem-mesh.live',
   },
   {
     name: 'fastly',
