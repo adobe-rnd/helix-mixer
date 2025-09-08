@@ -19,44 +19,48 @@ config();
 const providers = [
   {
     name: 'cloudflare',
-    proddomain: 'helix-mixer.adobeaem.workers.dev',
-    cidomain: 'helix3--helix-mixer-ci.adobeaem.workers.dev',
+    proddomain: 'aem.network',
+    cidomain: 'cloudflareci.aem.network',
   },
   {
     name: 'fastly',
-    proddomain: 'briefly-poetic-corgi.edgecompute.app',
-    cidomain: 'remotely-prime-akita.edgecompute.app',
+    // proddomain: 'aem.network', // not yet, activate when multi-cloud certs have been issued
+    cidomain: 'fastlyci.aem.network',
   },
 ];
 
-providers.forEach((env) => {
-  const domain = process.env.TEST_PRODUCTION ? env.proddomain : env.cidomain;
-
+providers
+  .map((env) => (process.env.TEST_PRODUCTION ? env.proddomain : env.cidomain))
+  .filter((domain) => !!domain)
+  .forEach((domain) => {
   /**
    * @param {string} path
+   * @param {string} ref
+   * @param {string} site
+   * @param {string} owner
    * @returns {{url: URL} & RequestInit}
    */
-  function getFetchOptions(path) {
-    return {
-      url: new URL(`https://${domain}${path}`),
-      cache: 'no-store',
-      redirect: 'manual',
-    };
-  }
+    function getFetchOptions(path, ref, site, owner) {
+      return {
+        url: new URL(`https://${ref}--${site}--${owner}.${domain}${path}`),
+        cache: 'no-store',
+        redirect: 'manual',
+      };
+    }
 
-  describe(`Post-Deploy Tests (${env.name})`, () => {
-    const fetchContext = h1NoCache();
+    describe(`Post-Deploy Tests (${domain})`, () => {
+      const fetchContext = h1NoCache();
 
-    after(async () => {
-      await fetchContext.reset();
-    });
+      after(async () => {
+        await fetchContext.reset();
+      });
 
-    it('returns 404 for missing site param', async () => {
-      const { url, ...opts } = getFetchOptions('/missing');
-      const res = await fetch(url, opts);
+      it('returns 404 for invalid site', async () => {
+        const { url, ...opts } = getFetchOptions('/missing', 'main', 'site', 'owner');
+        const res = await fetch(url, opts);
 
-      assert.strictEqual(res.status, 404, await res.text());
-      assert.strictEqual(res.headers.get('x-error'), 'missing org');
+        assert.strictEqual(res.status, 404, await res.text());
+        assert.strictEqual(res.headers.get('x-error'), 'missing org');
+      });
     });
   });
-});
