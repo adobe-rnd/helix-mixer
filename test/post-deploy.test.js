@@ -19,13 +19,13 @@ config();
 const providers = [
   {
     name: 'cloudflare',
-    proddomain: process.env.HLX_CLOUDFLARE_PROD_DOMAIN || 'helix-mixer.workers.dev',
-    cidomain: process.env.HLX_CLOUDFLARE_CI_DOMAIN || 'helix-mixer-ci.adobeaem.workers.dev',
+    proddomain: 'helix-mixer.adobeaem.workers.dev',
+    cidomain: 'helix3--helix-mixer-ci.adobeaem.workers.dev',
   },
   {
     name: 'fastly',
-    proddomain: process.env.HLX_FASTLY_PROD_DOMAIN || 'helix-mixer.edgecompute.app',
-    cidomain: process.env.HLX_FASTLY_CI_DOMAIN || 'helix-mixer-ci.edgecompute.app',
+    proddomain: 'briefly-poetic-corgi.edgecompute.app',
+    cidomain: 'remotely-prime-akita.edgecompute.app',
   },
 ];
 
