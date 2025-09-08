@@ -45,8 +45,6 @@ jobs:
       - name: Wait for service to update
         run: sleep 45
       - name: Post-Deployment Tests
-        env:
-          TEST_INTEGRATION: true
         run: npm run test-postdeploy
 
   release:
@@ -73,3 +71,7 @@ jobs:
           HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
           HLX_CLOUDFLARE_ACCOUNT: ${{ secrets.HLX_CLOUDFLARE_ACCOUNT }}
           HLX_CLOUDFLARE_AUTH: ${{ secrets.HLX_CLOUDFLARE_AUTH }}
+      - name: Post-Deployment Tests
+        run: npm run test-postdeploy
+        env:
+          TEST_PRODUCTION: true

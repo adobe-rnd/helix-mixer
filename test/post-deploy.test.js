@@ -10,8 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-import assert from 'assert';
 import { h1NoCache } from '@adobe/fetch';
+import assert from 'assert';
 import { config } from 'dotenv';
 
 config();
@@ -30,7 +30,7 @@ const providers = [
 ];
 
 providers.forEach((env) => {
-  const domain = process.env.CI ? env.cidomain : env.proddomain;
+  const domain = process.env.TEST_PRODUCTION ? env.proddomain : env.cidomain;
 
   /**
    * @param {string} path
@@ -51,14 +51,11 @@ providers.forEach((env) => {
       await fetchContext.reset();
     });
 
-    it('returns 404 for missing site param', async function test() {
-      if (!process.env.TEST_INTEGRATION) {
-        this.skip();
-      }
+    it('returns 404 for missing site param', async () => {
       const { url, ...opts } = getFetchOptions('/missing');
       const res = await fetch(url, opts);
 
-      assert.strictEqual(res.status, 404);
+      assert.strictEqual(res.status, 404, await res.text());
       assert.strictEqual(res.headers.get('x-error'), 'missing org');
     });
   });
