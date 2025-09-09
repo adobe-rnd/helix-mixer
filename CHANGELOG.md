@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.1...v1.2.2) (2025-09-09)
+
+
+### Bug Fixes
+
+* update config tests to work in CI environment ([5c30a49](https://github.com/adobe-rnd/helix-mixer/commit/5c30a498b7884f618f9813ec544e55d88b5fec62))
+
 ## [1.2.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.0...v1.2.1) (2025-09-04)
 
 
