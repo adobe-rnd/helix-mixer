@@ -46,7 +46,8 @@ jobs:
         run: sleep 45
       - name: Post-Deployment Tests
         run: npm run test-postdeploy
-
+        env:
+          POST_DEPLOY_SITE_NAME: ${{ secrets.POST_DEPLOY_SITE_NAME }}
   release:
     name: Release
     if: github.ref == 'refs/heads/main'
