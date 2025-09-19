@@ -11,17 +11,18 @@
  */
 
 import { resolveConfig } from './config.js';
+import { resolveCustomDomain } from './dns.js';
 import handler from './handler.js';
 import { errorResponse, isCustomDomain } from './util.js';
-import { resolveCustomDomain } from './dns.js';
 
 /**
  * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
- * @param {import('@cloudflare/workers-types').Request} req
+ * @param {Request} req the HTTP request object
  * @param {Env} env
  * @returns {Promise<Context>}
  */
 export async function makeContext(ectx, req, env) {
+  console.log('setting up context', ectx, req, env);
   /** @type {Context} */
   // @ts-ignore
   const ctx = {
