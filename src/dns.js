@@ -120,7 +120,6 @@ async function resolveCnameViaDoH(domain) {
   const init = {
     method: 'GET',
     headers: { accept: 'application/dns-message' },
-    backend: { target: 'https://dns.google' },
   };
   const res = await fetch(url, init);
   if (!res.ok) {
