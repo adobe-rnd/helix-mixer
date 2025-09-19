@@ -20,7 +20,7 @@ const name = process.env.POST_DEPLOY_SITE_NAME;
 
 const prodPaths = {
   '/us/en_us/': { status: 200, contentType: 'text/html; charset=utf-8' },
-  '/us/en_us': { status: 301, contentType: 'text/html; charset=utf-8' },
+  '/us/en_us': { status: 301, contentType: 'text/html; charset=utf-8', error: 'moved' },
   '/us/en_us/media_1a8779c3989180d2065225c3774102a6b6dd5cf51.avif': { status: 200, contentType: 'image/avif' },
   '/us/en_us/products/e310': { status: 200, contentType: 'text/html; charset=utf-8' },
   '/us/en_us/products/5200-standard-getting-started': { status: 200, contentType: 'text/html; charset=utf-8' },
@@ -90,7 +90,7 @@ providers
 
           assert.strictEqual(res.status, result.status, await res.text());
           assert.strictEqual(res.headers.get('content-type'), result.contentType);
-          assert.strictEqual(res.headers.get('x-error'), null);
+          assert.strictEqual(res.headers.get('x-error'), result.error || null);
         }).timeout(4000);
       });
     });
