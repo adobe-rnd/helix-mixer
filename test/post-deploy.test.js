@@ -73,8 +73,12 @@ providers
         const res = await fetch(url, opts);
 
         assert.strictEqual(res.status, 404, await res.text());
-        // Skip x-error header check as it varies by runtime/deployment state
-        // assert.strictEqual(res.headers.get('x-error').substring(0, 21), 'Missing configuration');
+        // Backend may return either format depending on routing/cache state
+        const errorPrefix = res.headers.get('x-error').substring(0, 21);
+        assert.ok(
+          errorPrefix === 'Missing configuration' || errorPrefix === 'Failed to determine c',
+          `Expected x-error to start with 'Missing configuration' or 'Failed to determine c', got '${errorPrefix}'`,
+        );
       }).timeout(4000);
 
       it('returns 200 for Helix Homepage', async () => {
