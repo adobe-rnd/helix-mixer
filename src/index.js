@@ -22,7 +22,6 @@ import { errorResponse, isCustomDomain } from './util.js';
  * @returns {Promise<Context>}
  */
 export async function makeContext(ectx, req, env) {
-  console.log('setting up context', ectx, req, env);
   /** @type {Context} */
   // @ts-ignore
   const ctx = {
