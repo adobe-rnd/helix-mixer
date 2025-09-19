@@ -98,5 +98,21 @@ providers
           assert.strictEqual(res.headers.get('x-error'), result.error || null);
         }).timeout(4000);
       });
+
+      // Test x-custom-domain header for CI hosts
+      if (!process.env.TEST_PRODUCTION) {
+        it('returns 200 with x-custom-domain header for CI host', async () => {
+          const url = new URL(`https://test.${domain}/`);
+          const res = await fetch(url, {
+            headers: {
+              'x-custom-domain': 'www.wagenerbeer.com',
+            },
+            cache: 'no-store',
+            redirect: 'manual',
+          });
+
+          assert.strictEqual(res.status, 200, await res.text());
+        }).timeout(4000);
+      }
     });
   });
