@@ -89,12 +89,19 @@ export function globToRegExp(glob) {
   return new RegExp(`^${reString}$`);
 }
 
+// Shared CI domain patterns
+const CI_PATTERNS = [
+  '.fastlyci.aem.network',
+  '.cloudflareci.aem-mesh.live',
+];
+
 /**
  * Checks if a URL has a custom domain (not a known service domain)
  * @param {URL} url - The URL object to check
+ * @param {Request} req - The request object to check
  * @returns {boolean} - false if hostname ends with known service patterns, true otherwise
  */
-export function isCustomDomain(url) {
+export function isCustomDomain(url, req) {
   if (!url?.hostname) {
     return true;
   }
@@ -105,5 +112,30 @@ export function isCustomDomain(url) {
     '.aem-mesh.live',
   ];
 
-  return !servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
+  const isServiceDomain = servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
+  const isCIDomain = CI_PATTERNS.some((pattern) => url.hostname.endsWith(pattern));
+  const hasDomainOverride = isCIDomain && !!req?.headers?.get('x-custom-domain');
+
+  return hasDomainOverride || !isServiceDomain;
+}
+
+/**
+ * Gets the effective domain from a request, considering CI host overrides
+ * @param {Request} req - The request object
+ * @returns {string} - The effective domain
+ * (from x-custom-domain header for CI hosts, or Host header otherwise)
+ */
+export function getEffectiveDomain(req) {
+  const url = new URL(req.url);
+  const isCIDomain = CI_PATTERNS.some((pattern) => url.hostname.endsWith(pattern));
+
+  if (isCIDomain) {
+    const customDomain = req.headers.get('x-custom-domain');
+    if (customDomain) {
+      return customDomain;
+    }
+  }
+
+  // Return the Host header
+  return req.headers.get('host');
 }

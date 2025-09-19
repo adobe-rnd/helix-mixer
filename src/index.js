@@ -13,7 +13,7 @@
 import { resolveConfig } from './config.js';
 import { resolveCustomDomain } from './dns.js';
 import handler from './handler.js';
-import { errorResponse, isCustomDomain } from './util.js';
+import { errorResponse, getEffectiveDomain, isCustomDomain } from './util.js';
 
 /**
  * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
@@ -31,10 +31,11 @@ export async function makeContext(ectx, req, env) {
   ctx.attributes = {};
   ctx.env = env;
   ctx.url = new URL(req.url);
-  if (isCustomDomain(ctx.url) && ctx.url.hostname) {
-    const networkOrigin = await resolveCustomDomain(ctx.url.hostname);
+  if (isCustomDomain(ctx.url, req)) {
+    const effectiveDomain = getEffectiveDomain(req);
+    const networkOrigin = await resolveCustomDomain(effectiveDomain);
     if (networkOrigin) {
-      console.debug(`Resolving custom domain ${ctx.url.hostname} to ${networkOrigin}`);
+      console.debug(`Resolving custom domain ${effectiveDomain} to ${networkOrigin}`);
       ctx.url.host = networkOrigin;
     } else {
       console.warn(`Failed to resolve custom domain ${ctx.url.hostname}`);
