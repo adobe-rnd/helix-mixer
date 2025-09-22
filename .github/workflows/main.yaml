@@ -1,75 +1,78 @@
-name: Build
-on: [push]
-
-env:
-  CI_BUILD_NUM: ${{ github.run_id }}
-  CI_BRANCH: ${{ github.ref_name }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+name: CI
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
 
 permissions:
+  contents: write
+  pull-requests: write
   id-token: write
-  contents: write  # semantic-release-dry verifies the write permissions
-  issues: read # needed by semantic-release
-  pull-requests: write # needed by semantic-release
 
 jobs:
-  test:
-    name: Test
+  build-and-test:
+    name: Lint and Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-      - run: npm install
+          node-version: lts/*
+      - run: npm ci
+      - run: npm run lint
       - run: npm test
-      # - uses: codecov/codecov-action@v4
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
 
-  test-deploy:
-    name: Test Deploy
-    runs-on: ubuntu-latest
+  branch-deploy:
+    name: Deploy to CF + Fastly (branch) and Post-Deploy Test
     if: github.ref != 'refs/heads/main'
-    needs: test
+    runs-on: ubuntu-latest
+    needs: build-and-test
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-      - run: npm install
-      - name: extracting last commit message
-        run: |
-          echo "CI_LAST_COMMIT_MSG=$(git show -s --format="%s")" >> $GITHUB_ENV
-          echo CI_LAST_COMMIT_MSG
-      - name: Branch Deployment
-        run: npm run deploy:ci
-      - name: Post-Deployment Integration Test
-        run: npm run test-postdeploy
-      - name: Semantic Release (Dry Run)
-        run: npm run semantic-release-dry
+          node-version: lts/*
+      - run: npm ci
+      - name: Deploy via helix-deploy (CI)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          HLX_FASTLY_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
+          HLX_FASTLY_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
+          HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
+          HLX_CLOUDFLARE_ACCOUNT: ${{ secrets.HLX_CLOUDFLARE_ACCOUNT }}
+          HLX_CLOUDFLARE_AUTH: ${{ secrets.HLX_CLOUDFLARE_AUTH }}
+          HLX_CLOUDFLARE_NAME: helix-mixer-ci
+        run: npm run deploy:ci
+      - name: Wait for service to update
+        run: sleep 45
+      - name: Post-Deployment Tests
+        run: npm run test-postdeploy
+        env:
+          POST_DEPLOY_SITE_NAME: ${{ secrets.POST_DEPLOY_SITE_NAME }}
   release:
     name: Release
-    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: test
+    runs-on: ubuntu-latest
+    needs: build-and-test
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-      - run: npm install
-      - name: extracting last commit message
-        run: |
-          echo "CI_LAST_COMMIT_MSG=$(git show -s --format="%s")" >> $GITHUB_ENV
-          echo CI_LAST_COMMIT_MSG
+          node-version: lts/*
+      - run: npm ci
       - name: Semantic Release
         run: npm run semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          # CI (prepare) deployment env
+          HLX_FASTLY_CI_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
+          HLX_FASTLY_CI_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
+          # Production (publish) deployment env
+          HLX_FASTLY_ID: ${{ secrets.HLX_FASTLY_ID }}
+          HLX_FASTLY_AUTH: ${{ secrets.HLX_FASTLY_AUTH }}
+          HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
+          HLX_CLOUDFLARE_ACCOUNT: ${{ secrets.HLX_CLOUDFLARE_ACCOUNT }}
+          HLX_CLOUDFLARE_AUTH: ${{ secrets.HLX_CLOUDFLARE_AUTH }}
+      - name: Post-Deployment Tests
+        run: npm run test-postdeploy
+        env:
+          TEST_PRODUCTION: true
