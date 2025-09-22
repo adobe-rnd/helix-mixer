@@ -112,11 +112,11 @@ function decodeName(buf, offset) {
  * @param {string} domain
  * @returns {Promise<string|null>}
  */
-async function resolveCnameViaDoH(domain) {
+async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-query') {
   const query = buildQuery(domain, 5);
-  const url = new URL('https://dns.google/dns-query');
+  const url = new URL(provider);
   url.searchParams.set('dns', b64url(query));
-  /** @type {RequestInit & { backend?: unknown }} */
+  /** @type {RequestInit} */
   const init = {
     method: 'GET',
     headers: { accept: 'application/dns-message' },
