@@ -15,7 +15,7 @@ import handler from './handler.js';
 import { errorResponse, isCustomDomain, resolveCustomDomain } from './util.js';
 
 /**
- * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
+ * @param {import("@cloudflare/workers-types").ExecutionContext} ectx
  * @param {import('@cloudflare/workers-types').Request} req
  * @param {Env} env
  * @returns {Promise<Context>}
@@ -62,7 +62,7 @@ export default {
   /**
    * @param {import('@cloudflare/workers-types').Request} request
    * @param {Env} env
-   * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} pctx
+   * @param {import("@cloudflare/workers-types").ExecutionContext} pctx
    * @returns {Promise<import('@cloudflare/workers-types').Response>}
    */
   async fetch(request, env, pctx) {

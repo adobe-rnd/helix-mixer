@@ -41,7 +41,7 @@ const mockConfigs = {
         backends: {
           adobe_productbus: {
             origin: 'pipeline-cloudflare.adobecommerce.live',
-            path: '/aemsites/catalog-service-feed/main/',
+            pathPrefix: '/aemsites/catalog-service-feed/main/',
           },
         },
       },
@@ -60,7 +60,7 @@ const mockConfigs = {
           },
           adobe_productbus: {
             origin: 'pipeline-cloudflare.adobecommerce.live',
-            path: '/dylandepass/helix-test-product-bus/main/',
+            pathPrefix: '/dylandepass/helix-test-product-bus/main/',
           },
         },
       },
@@ -86,15 +86,15 @@ const mockConfigs = {
           },
           adobe_edge__nav: {
             origin: 'cart--shop-cart--aemsites.aem.live',
-            path: '/us/en_us/nav/',
+            pathPrefix: '/us/en_us/nav/',
           },
           adobe_edge__footer: {
             origin: 'cart--shop-cart--aemsites.aem.live',
-            path: '/us/en_us/footer/',
+            pathPrefix: '/us/en_us/footer/',
           },
           adobe_productbus: {
             origin: 'pipeline-cloudflare.adobecommerce.live',
-            path: '/aemsites/shop/main/',
+            pathPrefix: '/aemsites/shop/main/',
           },
           uat: {
             origin: 'uat.shop.com',
@@ -156,7 +156,7 @@ const mockConfigs = {
         backends: {
           backend1: {
             origin: 'https://example.com/base/path',
-            path: '/backend/path',
+            pathPrefix: '/backend/path',
           },
         },
       },
@@ -167,6 +167,7 @@ const mockConfigs = {
       mixerConfig: {
         patterns: {
           '/products/*': 'adobe_productbus',
+          '/products/operations-log': 'adobe_productbus_api',
         },
         backends: {
           adobe_edge: {
@@ -174,7 +175,11 @@ const mockConfigs = {
           },
           adobe_productbus: {
             origin: 'pipeline-cloudflare.adobecommerce.live',
-            path: '/maxakuru/productbus-test/main/',
+            pathPrefix: '/maxakuru/productbus-test/main/',
+          },
+          adobe_productbus_api: {
+            origin: 'https://api.adobecommerce.live',
+            path: '/maxakuru/productbus-test/operations-log',
           },
           default: {
             origin: 'https://aem-prod.k24dhxxpqt72a.dummycachetest.com.c.k24dhxxpqt72a.ent.magento.cloud',
@@ -306,7 +311,7 @@ describe('Configuration Pattern Tests with Code Execution', () => {
     it('should handle origins with embedded paths', async () => {
       const mockCtx = createMockContext('test--site--org', '/test');
       const config = await resolveConfig(mockCtx);
-      
+
       assert.strictEqual(config.origin, 'example.com');
       // Backend path takes precedence, so we get /backend/path not /base/path
       assert.strictEqual(config.pathname, '/backend/path/test');
@@ -316,9 +321,18 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       // This test uses the same config as above - backend.path overrides origin path
       const mockCtx = createMockContext('test--site--org', '/test/subpath');
       const config = await resolveConfig(mockCtx);
-      
+
       assert.strictEqual(config.origin, 'example.com');
       assert.strictEqual(config.pathname, '/backend/path/test/subpath');
+    });
+
+    it('should handle complete path', async () => {
+      const mockCtx = createMockContext('main--productbus-test--maxakuru', '/products/operations-log');
+      const config = await resolveConfig(mockCtx);
+
+      assert.strictEqual(config.pattern, '/products/operations-log');
+      assert.strictEqual(config.origin, 'api.adobecommerce.live');
+      assert.strictEqual(config.pathname, '/maxakuru/productbus-test/operations-log');
     });
   });
 
@@ -399,7 +413,7 @@ describe('Configuration Pattern Tests with Code Execution', () => {
 
     it('should throw error for missing org', async () => {
       const ctx = createMockContext('main--site', '/test'); // Missing org part
-      
+
       try {
         await resolveConfig(ctx);
         assert.fail('Should have thrown error');
@@ -411,7 +425,7 @@ describe('Configuration Pattern Tests with Code Execution', () => {
 
     it('should throw error for missing site', async () => {
       const ctx = createMockContext('main', '/test'); // Missing site and org - will throw 'missing org' first
-      
+
       try {
         await resolveConfig(ctx);
         assert.fail('Should have thrown error');
@@ -432,12 +446,12 @@ describe('Configuration Pattern Tests with Code Execution', () => {
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('invalid--config--org', '/test');
-      
+
       try {
         await resolveConfig(ctx);
         assert.fail('Should have thrown error');
@@ -445,7 +459,7 @@ describe('Configuration Pattern Tests with Code Execution', () => {
         assert.strictEqual(error.response.status, 400);
         assert.ok(error.message.includes('invalid pattern'));
       }
-      
+
       // Clean up
       delete mockConfigs['invalid--config--org'];
     });
@@ -462,12 +476,12 @@ describe('Configuration Pattern Tests with Code Execution', () => {
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('noorigin--config--org', '/test');
-      
+
       try {
         await resolveConfig(ctx);
         assert.fail('Should have thrown error');
@@ -475,7 +489,7 @@ describe('Configuration Pattern Tests with Code Execution', () => {
         assert.strictEqual(error.response.status, 400);
         assert.ok(error.message.includes('invalid backend'));
       }
-      
+
       // Clean up
       delete mockConfigs['noorigin--config--org'];
     });
@@ -492,10 +506,10 @@ describe('Configuration Pattern Tests with Code Execution', () => {
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('ignored--subdomain--parts', '/test', {
         DEV: 'true',
         REF: 'feature',
@@ -507,7 +521,6 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.strictEqual(config.ref, 'feature');
       assert.strictEqual(config.site, 'devsite');
       assert.strictEqual(config.org, 'devorg');
-      
     });
   });
 
@@ -530,16 +543,15 @@ describe('Configuration Pattern Tests with Code Execution', () => {
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('test--site--org', '/products/category/item');
       const config = await resolveConfig(ctx);
-      
+
       assert.strictEqual(config.pattern, '/products/category/item');
       assert.strictEqual(config.origin, 'backend3.com');
-      
     });
   });
 
@@ -571,21 +583,20 @@ describe('Configuration Pattern Tests with Code Execution', () => {
             backends: {
               backend1: {
                 origin: 'example.com',
-                path: '/base/path/', // Trailing slash
+                pathPrefix: '/base/path/', // Trailing slash
               },
             },
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('test--site--org', '/test');
       const config = await resolveConfig(ctx);
-      
+
       assert.strictEqual(config.pathname, '/base/path/test');
-      
     });
 
     it('should handle leading slashes in backend paths', async () => {
@@ -597,21 +608,20 @@ describe('Configuration Pattern Tests with Code Execution', () => {
             backends: {
               backend1: {
                 origin: 'example.com',
-                path: 'base/path', // No leading slash
+                pathPrefix: 'base/path', // No leading slash
               },
             },
           },
         },
       };
-      
+
       // Re-setup mock to include new config
       setupMockFetch();
-      
+
       const ctx = createMockContext('test--site--org', '/test');
       const config = await resolveConfig(ctx);
-      
+
       assert.strictEqual(config.pathname, '/base/path/test');
-      
     });
   });
 });

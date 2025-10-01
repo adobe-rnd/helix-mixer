@@ -124,13 +124,14 @@ export async function resolveConfig(ctx, overrides = {}) {
   const backend = backends[backendKey];
 
   // resolve path
-  // prefer the path from backend config
-  let backendPath = backend.path ?? '';
+  // prefer the pathPrefix from backend config
+  let bePathPrefix = backend.pathPrefix ?? '';
   let protocol = backend.protocol ?? 'https';
-  // but also allow the path to be set on the origin
+  // but also allow the pathPrefix to be set by the origin
   if (backend.origin.includes('/')) {
     let parts;
     if (/^https?:\/\//.test(backend.origin)) {
+      // @ts-ignore
       // eslint-disable-next-line prefer-destructuring
       protocol = backend.origin.split('://')[0];
       parts = backend.origin.split('/').slice(2);
@@ -140,17 +141,25 @@ export async function resolveConfig(ctx, overrides = {}) {
     }
 
     backend.origin = parts.shift(); // correct the origin to be pathless
-    if (!backendPath) {
-      backendPath = parts.join('/');
+    if (!bePathPrefix) {
+      bePathPrefix = parts.join('/');
     }
   }
-  if (backendPath.endsWith('/')) {
-    backendPath = backendPath.slice(0, -1);
+  if (bePathPrefix.endsWith('/')) {
+    bePathPrefix = bePathPrefix.slice(0, -1);
   }
-  if (backendPath.startsWith('/')) {
-    backendPath = backendPath.slice(1);
+  if (bePathPrefix.startsWith('/')) {
+    bePathPrefix = bePathPrefix.slice(1);
   }
-  const pathname = `${backendPath ? `/${backendPath}` : ''}${ctx.url.pathname}`;
+
+  /** @type {string} */
+  let pathname;
+  // prefer complete path, if it exists, otherwise use pathPrefix
+  if (backend.path) {
+    pathname = backend.path;
+  } else {
+    pathname = `${bePathPrefix ? `/${bePathPrefix}` : ''}${ctx.url.pathname}`;
+  }
 
   log.debug(`pattern=${pattern} origin=${backend.origin} inpath=${ctx.url.pathname} bepath=${pathname}`);
 
