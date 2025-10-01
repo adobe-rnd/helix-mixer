@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.2...v1.2.3) (2025-10-01)
+
+
+### Bug Fixes
+
+* change path to pathprefix ([#30](https://github.com/adobe-rnd/helix-mixer/issues/30)) ([390d8ef](https://github.com/adobe-rnd/helix-mixer/commit/390d8efe2662f249fb03abab004a3b1e8d63b98f))
+
 ## [1.2.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.1...v1.2.2) (2025-09-09)
 
 
