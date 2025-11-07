@@ -11,6 +11,7 @@
  */
 
 import { ffetch } from './util.js';
+import inlineResources from './inlines.js';
 
 /**
  * @param {Context} ctx
@@ -34,12 +35,16 @@ export default async function handler(ctx) {
     ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
   }
   ctx.log.debug('fetching: ', beurl);
-  const beresp = await ffetch(impl)(beurl.toString(), {
+  let beresp = await ffetch(impl)(beurl.toString(), {
     method: ctx.info.method,
     body: ctx.info.body,
     redirect: 'manual',
     headers: {
       ...ctx.info.headers,
+      // TODO: handle brotli for inlined resources
+      'accept-encoding': ctx.info.headers['accept-encoding']?.includes('br')
+        ? ctx.info.headers['accept-encoding'].replace('br', '')
+        : ctx.info.headers['accept-encoding'],
       ...(isPipelineReq ? {
         'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
       } : {}),
@@ -49,6 +54,8 @@ export default async function handler(ctx) {
       cacheTtl: 0,
     },
   });
+
+  beresp = await inlineResources(ctx, beurl, beresp);
 
   return new Response(beresp.body, {
     status: beresp.status,

@@ -13,6 +13,9 @@ declare global {
     patterns: Record<string, string>;
     // backend ID -> backend configs
     backends: Record<string, BackendConfig>;
+    // inlines
+    inlineNav?: boolean;
+    inlineFooter?: boolean;
   }
 
   /**
