@@ -95,11 +95,11 @@ export function globToRegExp(glob) {
  * @returns {boolean} - false if hostname ends with known service patterns, true otherwise
  */
 export function isCustomDomain(url) {
-  if (url.hostname === 'localhost') {
-    return false;
-  }
   if (!url?.hostname) {
     return true;
+  }
+  if (url.hostname === 'localhost') {
+    return false;
   }
 
   const servicePatterns = [
