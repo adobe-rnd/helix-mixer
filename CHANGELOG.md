@@ -1,3 +1,15 @@
+# [1.3.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.3...v1.3.0) (2025-11-07)
+
+
+### Bug Fixes
+
+* indentation, minor tweaks ([ccb570b](https://github.com/adobe-rnd/helix-mixer/commit/ccb570b094c78798340b5ee71fcdf6ba47ff831d))
+
+
+### Features
+
+* inline nav/footer ([d6d4ffd](https://github.com/adobe-rnd/helix-mixer/commit/d6d4ffdd3858002e9d5a263eda3ef39d9c1617fe))
+
 ## [1.2.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.2...v1.2.3) (2025-10-01)
 
 
