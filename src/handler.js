@@ -11,7 +11,7 @@
  */
 
 import { ffetch } from './util.js';
-import inlineResources from './inlines.js';
+import inlineResources, { inlineConfigured } from './inlines.js';
 
 /**
  * @param {Context} ctx
@@ -42,7 +42,7 @@ export default async function handler(ctx) {
     headers: {
       ...ctx.info.headers,
       // TODO: handle brotli for inlined resources
-      'accept-encoding': ctx.info.headers['accept-encoding']?.includes('br')
+      'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
         ? ctx.info.headers['accept-encoding'].replace('br', '')
         : ctx.info.headers['accept-encoding'],
       ...(isPipelineReq ? {

@@ -49,6 +49,16 @@ function extractInlineMeta(markup) {
 }
 
 /**
+ * Indent each line at the beginning by the number of spaces.
+ * @param {string} markup
+ * @param {number} indentCount
+ * @returns {string}
+ */
+function indent(markup, indentCount) {
+  return markup.replace(/^/gm, ' '.repeat(indentCount));
+}
+
+/**
  * Inline a tag into the markup and return the updated markup.
  * Append any new cache keys to the cacheKeys array.
  * @param {Context} ctx
@@ -68,8 +78,23 @@ async function inlineTag(ctx, markup, cacheKeys, path, tag) {
   const newCacheKeys = (tagResponse.headers.get('surrogate-key') || '').split(' ');
   cacheKeys.push(...newCacheKeys);
   const tagMarkup = await tagResponse.text();
-  markup = markup.replace(`<${tag}></${tag}>`, `<${tag}>${tagMarkup}</${tag}>`);
+  const indentMatch = markup.match(new RegExp(`([^\\S\\n]*)<${tag}>`));
+  const indentCount = indentMatch?.[1]?.length ?? 0;
+
+  markup = markup.replace(`<${tag}></${tag}>`, `<${tag}>
+${indent(tagMarkup.trim(), indentCount + 2)}
+${' '.repeat(indentCount)}</${tag}>`);
   return markup;
+}
+
+/**
+ * Check if the config defines inlines.
+ * @param {Context} ctx
+ * @returns {boolean}
+ */
+export function inlineConfigured(ctx) {
+  const { config } = ctx;
+  return !!config.inlineNav || !!config.inlineFooter;
 }
 
 /**
@@ -89,8 +114,8 @@ async function inlineTag(ctx, markup, cacheKeys, path, tag) {
  * @returns {Promise<import('@cloudflare/workers-types').Response>}
  */
 export default async function inlineResources(ctx, beurl, response) {
-  const { config, info } = ctx;
-  if (!config.inlineNav && !config.inlineFooter) {
+  const { info } = ctx;
+  if (!inlineConfigured(ctx)) {
     return response;
   }
 
