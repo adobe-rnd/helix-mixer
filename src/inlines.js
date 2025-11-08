@@ -162,7 +162,6 @@ export default async function inlineResources(ctx, beurl, response) {
     });
   }
 
-  // TODO: handle all CDNs' forms of cache tags
   const cacheKeys = {
     // fastly
     'surrogate-key': new Set(response.headers.get('surrogate-key')?.split(' ') || []),
