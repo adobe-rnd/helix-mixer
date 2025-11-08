@@ -46,6 +46,10 @@ export async function resolveConfig(ctx, overrides = {}) {
     ref = ctx.env.REF;
     site = ctx.env.SITE;
     org = ctx.env.ORG;
+  } else if (ctx.env.ENVIRONMENT === 'ci') {
+    // extract rso from path, rewrite path
+    ([org, site, ref] = ctx.url.pathname.split('/').slice(1));
+    ctx.url.pathname = ctx.url.pathname.replace(`/${org}/${site}/${ref}`, '');
   } else {
     ([ref, site, org] = ctx.info.subdomain.split('--'));
   }
