@@ -46,6 +46,7 @@ export default async function handler(ctx) {
       // 'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
       //   ? ctx.info.headers['accept-encoding'].replace('br', '')
       //   : ctx.info.headers['accept-encoding'],
+      'accept-encoding': 'br',
       ...(isPipelineReq ? {
         'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
       } : {}),
