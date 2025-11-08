@@ -11,7 +11,7 @@
  */
 
 import { ffetch } from './util.js';
-import inlineResources, { inlineConfigured } from './inlines.js';
+import inlineResources from './inlines.js';
 
 /**
  * @param {Context} ctx
@@ -43,9 +43,9 @@ export default async function handler(ctx) {
       ...ctx.info.headers,
       // TODO: handle brotli for inlined resources
       // eslint-disable-next-line max-len
-      'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
-        ? ctx.info.headers['accept-encoding'].replace('br', '')
-        : ctx.info.headers['accept-encoding'],
+      // 'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
+      //   ? ctx.info.headers['accept-encoding'].replace('br', '')
+      //   : ctx.info.headers['accept-encoding'],
       ...(isPipelineReq ? {
         'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
       } : {}),
