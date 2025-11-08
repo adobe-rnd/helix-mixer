@@ -42,6 +42,7 @@ export default async function handler(ctx) {
     headers: {
       ...ctx.info.headers,
       // TODO: handle brotli for inlined resources
+      // eslint-disable-next-line max-len
       'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
         ? ctx.info.headers['accept-encoding'].replace('br', '')
         : ctx.info.headers['accept-encoding'],

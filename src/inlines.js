@@ -98,6 +98,25 @@ export function inlineConfigured(ctx) {
 }
 
 /**
+ * Read and decompress the body of a response.
+ * @param {import('@cloudflare/workers-types').Response} response
+ * @returns {Promise<string>}
+ */
+async function readBodyText(response) {
+  let decompStream;
+  if (response.headers.get('Content-Encoding') === 'gzip') {
+    decompStream = new DecompressionStream('gzip');
+  } else if (response.headers.get('Content-Encoding') === 'brotli') {
+    decompStream = new DecompressionStream('brotli');
+  } else {
+    return response.text();
+  }
+
+  const decompressedResponse = new Response(response.body.pipeThrough(decompStream));
+  return decompressedResponse.text();
+}
+
+/**
  * If config defines inlines, and the original requested resource is:
  *   0. a GET request
  *   1. an HTML document
@@ -136,7 +155,7 @@ export default async function inlineResources(ctx, beurl, response) {
   }
 
   // get the markup
-  let markup = await response.text();
+  let markup = await readBodyText(response);
   const meta = extractInlineMeta(markup);
   if (!meta.nav && !meta.footer) {
     return new Response(markup, {
