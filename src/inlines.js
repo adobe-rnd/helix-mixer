@@ -104,6 +104,7 @@ export function inlineConfigured(ctx) {
  */
 async function readBodyText(response) {
   let decompStream;
+  console.debug('response.headers[content-encoding]: ', response.headers.get('content-encoding'));
   if (response.headers.get('Content-Encoding') === 'gzip') {
     decompStream = new DecompressionStream('gzip');
   } else if (response.headers.get('Content-Encoding') === 'brotli') {
