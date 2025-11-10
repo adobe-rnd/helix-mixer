@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+import { ffetch } from './util.js';
+
 /**
  * @type {string[]}
  */
@@ -63,20 +65,33 @@ function indent(markup, indentCount) {
  * Append any new cache keys to the cacheKeys array.
  * @param {Context} ctx
  * @param {string} markup
- * @param {string[]} cacheKeys
+ * @param {Record<string, Set<string>>} cacheKeys
  * @param {string} path path to resource to fetch
  * @param {'header' | 'footer'} tag tag to replace in markup
  * @returns {Promise<string>}
  */
 async function inlineTag(ctx, markup, cacheKeys, path, tag) {
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
-  const tagResponse = await fetch(new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`));
+  const url = new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`);
+  const tagResponse = await ffetch()(url.toString(), {
+    cf: {
+      cacheEverything: false,
+      cacheTtl: 0,
+    },
+  });
   if (tagResponse.status !== 200 || !tagResponse.headers.get('content-type')?.includes('text/html')) {
     ctx.log.warn(`Failed to inline ${tag} from ${path}: ${tagResponse.status}`);
     return markup;
   }
-  const newCacheKeys = (tagResponse.headers.get('surrogate-key') || '').split(' ');
-  cacheKeys.push(...newCacheKeys);
+
+  // merge cachekeys
+  for (const [key, value] of Object.entries(cacheKeys)) {
+    const delimiter = key === 'surrogate-key' ? ' ' : ',';
+    const strValue = tagResponse.headers.get(key)?.trim();
+    if (strValue) {
+      strValue.split(delimiter).forEach((v) => value.add(v.trim()));
+    }
+  }
   const tagMarkup = await tagResponse.text();
   const indentMatch = markup.match(new RegExp(`([^\\S\\n]*)<${tag}>`));
   const indentCount = indentMatch?.[1]?.length ?? 0;
@@ -147,19 +162,31 @@ export default async function inlineResources(ctx, beurl, response) {
     });
   }
 
-  // TODO: handle all CDNs' forms of cache tags
-  const cacheKeys = response.headers.get('surrogate-key')?.split(' ') || [];
+  const cacheKeys = {
+    // fastly
+    'surrogate-key': new Set(response.headers.get('surrogate-key')?.split(' ') || []),
+    // akamai
+    'edge-cache-tag': new Set(response.headers.get('edge-cache-tag')?.split(',') || []),
+    // cloudflare
+    'cache-tag': new Set(response.headers.get('cache-tag')?.split(',') || []),
+  };
   markup = await inlineTag(ctx, markup, cacheKeys, meta.nav, 'header');
   markup = await inlineTag(ctx, markup, cacheKeys, meta.footer, 'footer');
 
   // rebuild the response with the updated markup and cache keys
+  const cacheHeaders = {};
+  for (const [key, value] of Object.entries(cacheKeys)) {
+    const strValue = [...value].join(key === 'surrogate-key' ? ' ' : ',').trim();
+    if (strValue) {
+      cacheHeaders[key] = strValue;
+    }
+  }
+
   return new Response(markup, {
     status: response.status,
     headers: {
       ...Object.fromEntries(response.headers.entries()),
-      ...(cacheKeys.length ? {
-        'surrogate-key': ([...new Set(cacheKeys)]).join(' '),
-      } : {}),
+      ...cacheHeaders,
     },
   });
 }
