@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.1...v1.3.2) (2025-11-10)
+
+
+### Bug Fixes
+
+* minor tweak and tests ([fe6bd3b](https://github.com/adobe-rnd/helix-mixer/commit/fe6bd3b248856aa6921647b48d0f95e5357681a7))
+
 ## [1.3.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.0...v1.3.1) (2025-11-10)
 
 
