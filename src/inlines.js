@@ -71,6 +71,10 @@ function indent(markup, indentCount) {
  * @returns {Promise<string>}
  */
 async function inlineTag(ctx, markup, cacheKeys, path, tag) {
+  if (!path) {
+    return markup;
+  }
+
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
   const url = new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`);
   const tagResponse = await ffetch()(url.toString(), {
@@ -94,6 +98,7 @@ async function inlineTag(ctx, markup, cacheKeys, path, tag) {
   }
   const tagMarkup = await tagResponse.text();
   const indentMatch = markup.match(new RegExp(`([^\\S\\n]*)<${tag}>`));
+  /* c8 ignore next */
   const indentCount = indentMatch?.[1]?.length ?? 0;
 
   markup = markup.replace(`<${tag}></${tag}>`, `<${tag}>
