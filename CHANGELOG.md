@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.0...v1.3.1) (2025-11-10)
+
+
+### Bug Fixes
+
+* handle more cache keys ([2a41192](https://github.com/adobe-rnd/helix-mixer/commit/2a411925bb7661e4aaf77b0e47c7cc2bc7f70c3a))
+
 # [1.3.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.3...v1.3.0) (2025-11-07)
 
 
