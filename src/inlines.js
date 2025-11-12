@@ -156,7 +156,20 @@ export default async function inlineResources(ctx, beurl, response) {
   }
 
   // get the markup
-  let markup = await response.text();
+  ctx.log.debug('Inline processing - Response headers:', {
+    contentType: response.headers.get('content-type'),
+    contentEncoding: response.headers.get('content-encoding'),
+    status: response.status,
+  });
+
+  let markup;
+  try {
+    markup = await response.text();
+    ctx.log.debug('Successfully read response text, length:', markup.length);
+  } catch (error) {
+    ctx.log.error('Failed to read response text:', error);
+    throw error;
+  }
   const meta = extractInlineMeta(markup);
   if (!meta.nav && !meta.footer) {
     return new Response(markup, {

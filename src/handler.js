@@ -35,27 +35,48 @@ export default async function handler(ctx) {
     ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
   }
   ctx.log.debug('fetching: ', beurl);
+  // Debug logging to trace accept-encoding handling
+  const isInlineConfigured = inlineConfigured(ctx);
+  const originalAcceptEncoding = ctx.info.headers['accept-encoding'];
+  const finalAcceptEncoding = isInlineConfigured ? 'gzip, deflate' : originalAcceptEncoding;
+
+  ctx.log.debug('Accept-Encoding Debug:', {
+    inlineConfigured: isInlineConfigured,
+    original: originalAcceptEncoding,
+    final: finalAcceptEncoding,
+    config: ctx.config,
+  });
+
+  const fetchHeaders = {
+    ...ctx.info.headers,
+    // Force gzip/deflate only when inlining is configured to prevent brotli encoding issues.
+    // Some runtimes (e.g., Fastly) don't automatically decompress brotli, causing UTF-8
+    // decode errors when inlines.js tries to read the compressed response as text.
+    // Even if the client doesn't request brotli, backends may return cached brotli responses.
+    'accept-encoding': finalAcceptEncoding,
+    ...(isPipelineReq ? {
+      'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
+    } : {}),
+  };
+
+  ctx.log.debug('Fetching with headers:', fetchHeaders);
+
   let beresp = await ffetch(impl)(beurl.toString(), {
     method: ctx.info.method,
     body: ctx.info.body,
     redirect: 'manual',
-    headers: {
-      ...ctx.info.headers,
-      // Force gzip/deflate only when inlining is configured to prevent brotli encoding issues.
-      // Some runtimes (e.g., Fastly) don't automatically decompress brotli, causing UTF-8
-      // decode errors when inlines.js tries to read the compressed response as text.
-      // Even if the client doesn't request brotli, backends may return cached brotli responses.
-      'accept-encoding': inlineConfigured(ctx)
-        ? 'gzip, deflate'
-        : ctx.info.headers['accept-encoding'],
-      ...(isPipelineReq ? {
-        'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
-      } : {}),
-    },
+    headers: fetchHeaders,
     cf: {
       cacheEverything: false,
       cacheTtl: 0,
     },
+  });
+
+  ctx.log.debug('Backend response headers:', {
+    status: beresp.status,
+    contentType: beresp.headers.get('content-type'),
+    contentEncoding: beresp.headers.get('content-encoding'),
+    cacheStatus: beresp.headers.get('cf-cache-status'),
   });
 
   beresp = await inlineResources(ctx, beurl, beresp);
