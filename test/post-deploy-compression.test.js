@@ -80,7 +80,7 @@ providers
   .map((env) => (process.env.TEST_PRODUCTION ? env.proddomain : env.cidomain))
   .filter((domain) => !!domain)
   .forEach((domain) => {
-    describe(`Compression Tests (${domain})`, () => {
+    describe(`Post-Deploy Compression Tests (${domain})`, () => {
       const fetchContext = h1NoCache();
 
       after(async () => {

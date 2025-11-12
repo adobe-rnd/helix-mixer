@@ -12,7 +12,7 @@
     "test": "c8 --all --include 'src/**/*.js' mocha -i -g 'Post-Deploy' --spec 'test/**/*.test.js'",
     "dev": "if test -e .dev.vars; then wrangler dev --; else echo \"Need a .dev.vars files before starting local dev server\"; fi",
     "dev:remote": "wrangler dev --remote",
-    "test-postdeploy": "mocha --spec test/post-deploy.test.js",
+    "test-postdeploy": "mocha --spec 'test/post-deploy*.test.js'",
     "deploy:dev": "node prepare-deploy.js && wrangler deploy -c wrangler-versioned.toml",
     "deploy:ci": "hedy --build --verbose --deploy --fastly-auth $HLX_FASTLY_AUTH --compute-service-id $HLX_FASTLY_ID --cloudflare-email $HLX_CLOUDFLARE_EMAIL --cloudflare-account-id $HLX_CLOUDFLARE_ACCOUNT --cloudflare-auth $HLX_CLOUDFLARE_AUTH --name ${HLX_CLOUDFLARE_NAME:-helix-mixer-ci}",
     "deploy:production": "hedy --build --verbose --deploy --fastly-auth $HLX_FASTLY_AUTH --compute-service-id $HLX_FASTLY_ID --cloudflare-email $HLX_CLOUDFLARE_EMAIL --cloudflare-account-id $HLX_CLOUDFLARE_ACCOUNT --cloudflare-auth $HLX_CLOUDFLARE_AUTH --name ${HLX_CLOUDFLARE_NAME:-helix-mixer}",
