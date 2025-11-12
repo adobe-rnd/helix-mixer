@@ -83,7 +83,9 @@
     "sinon": "^19.0.2",
     "wrangler": "4.46.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "brotli-wasm": "^3.0.1"
+  },
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
   }
