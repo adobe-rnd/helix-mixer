@@ -156,11 +156,30 @@ export default async function inlineResources(ctx, beurl, response) {
   }
 
   // get the markup
+  const contentEncoding = response.headers.get('content-encoding');
   ctx.log.debug('Inline processing - Response headers:', {
     contentType: response.headers.get('content-type'),
-    contentEncoding: response.headers.get('content-encoding'),
+    contentEncoding,
     status: response.status,
   });
+
+  // Debug: Check if response body is actually compressed
+  if (contentEncoding) {
+    const clonedResponse = response.clone();
+    try {
+      const buffer = await clonedResponse.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const magicBytes = bytes.slice(0, 10).join(' ');
+      ctx.log.debug('Response magic bytes:', {
+        encoding: contentEncoding,
+        firstBytes: magicBytes,
+        gzipSignature: (bytes[0] === 0x1f && bytes[1] === 0x8b) ? 'YES' : 'NO',
+        size: buffer.byteLength,
+      });
+    } catch (e) {
+      ctx.log.error('Failed to read magic bytes:', e);
+    }
+  }
 
   let markup;
   try {
