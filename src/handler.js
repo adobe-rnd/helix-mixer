@@ -41,9 +41,12 @@ export default async function handler(ctx) {
     redirect: 'manual',
     headers: {
       ...ctx.info.headers,
-      // TODO: handle brotli for inlined resources
-      'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
-        ? ctx.info.headers['accept-encoding'].replace('br', '')
+      // Force gzip/deflate only when inlining is configured to prevent brotli encoding issues.
+      // Some runtimes (e.g., Fastly) don't automatically decompress brotli, causing UTF-8
+      // decode errors when inlines.js tries to read the compressed response as text.
+      // Even if the client doesn't request brotli, backends may return cached brotli responses.
+      'accept-encoding': inlineConfigured(ctx)
+        ? 'gzip, deflate'
         : ctx.info.headers['accept-encoding'],
       ...(isPipelineReq ? {
         'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
