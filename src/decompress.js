@@ -39,21 +39,16 @@ export async function decompressResponse(response, ctx) {
       decompressedStream = response.body.pipeThrough(new DecompressionStream('deflate'));
       ctx.log.debug('Decompressing deflate response');
     } else if (contentEncoding === 'br') {
-      // Use brotli-wasm for brotli decompression
+      // Use brocha for brotli decompression
       try {
         // Dynamic import to avoid loading if not needed
-        const brotliModule = await import('brotli-wasm');
-
-        // Initialize brotli-wasm if needed
-        if (typeof brotliModule.default === 'function') {
-          await brotliModule.default();
-        }
+        const { decompress } = await import('brocha');
 
         // Read the entire compressed body
         const compressedData = new Uint8Array(await response.arrayBuffer());
 
-        // Decompress using brotli-wasm
-        const decompressedData = brotliModule.decompress(compressedData);
+        // Decompress using brocha
+        const decompressedData = decompress(compressedData);
 
         // Create a new response with decompressed data
         const headers = new Headers(response.headers);

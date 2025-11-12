@@ -84,7 +84,7 @@
     "wrangler": "4.46.0"
   },
   "dependencies": {
-    "brotli-wasm": "^3.0.1"
+    "brocha": "^0.1.1"
   },
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"

@@ -78,33 +78,20 @@ describe('decompress', () => {
       assert.strictEqual(result.headers.get('content-encoding'), null);
     });
 
-    it('should decompress brotli content', async function () {
-      // Skip if brotli-wasm isn't available
-      try {
-        const brotliModule = await import('brotli-wasm');
+    it('should decompress brotli content', async () => {
+      const originalText = 'Hello World - this is brotli compressed content!';
+      const compressed = zlib.brotliCompressSync(Buffer.from(originalText));
 
-        // Initialize brotli-wasm if needed
-        if (typeof brotliModule.default === 'function') {
-          await brotliModule.default();
-        }
+      const response = new Response(compressed, {
+        headers: {
+          'content-type': 'text/plain',
+          'content-encoding': 'br',
+        },
+      });
 
-        const originalText = 'Hello World - this is brotli compressed content!';
-        const compressed = brotliModule.compress(new TextEncoder().encode(originalText));
-
-        const response = new Response(compressed, {
-          headers: {
-            'content-type': 'text/plain',
-            'content-encoding': 'br',
-          },
-        });
-
-        const result = await decompressResponse(response, mockCtx);
-        assert.strictEqual(await result.text(), originalText);
-        assert.strictEqual(result.headers.get('content-encoding'), null);
-      } catch (error) {
-        console.log('Skipping brotli test - brotli-wasm not available');
-        this.skip();
-      }
+      const result = await decompressResponse(response, mockCtx);
+      assert.strictEqual(await result.text(), originalText);
+      assert.strictEqual(result.headers.get('content-encoding'), null);
     });
 
     it('should preserve response status and other headers', async () => {
