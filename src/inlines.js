@@ -12,7 +12,7 @@
 
 import { ffetch } from './util.js';
 import { readResponseText } from './decompress.js';
-import { compressResponse } from './compress.js';
+import { compressText } from './compress.js';
 
 /**
  * @type {string[]}
@@ -192,15 +192,16 @@ export default async function inlineResources(ctx, beurl, response) {
       headers.set('x-compress-hint', compressionHint);
     }
 
-    const uncompressedResponse = new Response(markup, {
+    // Re-compress with the client's preferred format
+    const body = await compressText(markup, compressionHint, ctx);
+    if (compressionHint) {
+      headers.set('content-encoding', compressionHint);
+    }
+
+    return new Response(body, {
       status: response.status,
       headers,
     });
-
-    // Re-compress with the client's preferred format
-    return compressionHint
-      ? compressResponse(uncompressedResponse, compressionHint, ctx)
-      : uncompressedResponse;
   }
 
   const cacheKeys = {
@@ -237,13 +238,14 @@ export default async function inlineResources(ctx, beurl, response) {
     headers.set(key, value);
   });
 
-  const uncompressedResponse = new Response(markup, {
+  // Re-compress with the client's preferred format
+  const body = await compressText(markup, compressionHint, ctx);
+  if (compressionHint) {
+    headers.set('content-encoding', compressionHint);
+  }
+
+  return new Response(body, {
     status: response.status,
     headers,
   });
-
-  // Re-compress with the client's preferred format
-  return compressionHint
-    ? compressResponse(uncompressedResponse, compressionHint, ctx)
-    : uncompressedResponse;
 }

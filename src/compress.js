@@ -11,42 +11,34 @@
  */
 
 /**
- * Compresses a Response based on the requested compression format.
+ * Compresses text content based on the requested compression format.
  * Supports gzip and deflate compression.
  *
- * @param {Response} response - The uncompressed response
+ * @param {string} text - The uncompressed text content
  * @param {string} format - The compression format ('gzip' or 'deflate')
  * @param {object} ctx - Context object with logging
- * @returns {Promise<Response>} - Compressed response with content-encoding header set
+ * @returns {Promise<ReadableStream>} - Compressed stream
  */
-export async function compressResponse(response, format, ctx) {
+export async function compressText(text, format, ctx) {
   if (!format || format === 'identity') {
-    // No compression requested
-    return response;
+    // No compression requested, return text as stream
+    return new Response(text).body;
   }
 
   if (format !== 'gzip' && format !== 'deflate') {
-    ctx.log.warn(`Unsupported compression format: ${format}, returning uncompressed response`);
-    return response;
+    ctx.log.warn(`Unsupported compression format: ${format}, returning uncompressed`);
+    return new Response(text).body;
   }
 
   try {
-    // Use CompressionStream for gzip or deflate
-    const compressedStream = response.body.pipeThrough(new CompressionStream(format));
-    ctx.log.debug(`Compressing response with ${format}`);
-
-    const headers = new Headers(response.headers);
-    headers.set('content-encoding', format);
-    headers.delete('content-length'); // Length will change after compression
-
-    return new Response(compressedStream, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
+    // Create a readable stream from the text and compress it
+    const textStream = new Response(text).body;
+    const compressedStream = textStream.pipeThrough(new CompressionStream(format));
+    ctx.log.debug(`Compressing text with ${format}`);
+    return compressedStream;
   } catch (error) {
-    ctx.log.error(`Failed to compress response with ${format}:`, error);
-    // If compression fails, return the original response
-    return response;
+    ctx.log.error(`Failed to compress text with ${format}:`, error);
+    // If compression fails, return uncompressed
+    return new Response(text).body;
   }
 }
