@@ -83,9 +83,7 @@
     "sinon": "^19.0.2",
     "wrangler": "4.46.0"
   },
-  "dependencies": {
-    "brocha": "^0.1.1"
-  },
+  "dependencies": {},
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
   }

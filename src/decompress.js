@@ -12,8 +12,11 @@
 
 /**
  * Decompresses a Response based on its content-encoding header.
- * Supports gzip, deflate, and brotli compression.
+ * Supports gzip and deflate compression.
  * Returns the original response if not compressed or encoding is not supported.
+ *
+ * Note: Brotli is intentionally not supported to prevent cache poisoning issues.
+ * The handler forces accept-encoding to 'gzip, deflate' to prevent brotli responses.
  *
  * @param {Response} response - The potentially compressed response
  * @param {object} ctx - Context object with logging
@@ -38,34 +41,6 @@ export async function decompressResponse(response, ctx) {
       // Use DecompressionStream for deflate
       decompressedStream = response.body.pipeThrough(new DecompressionStream('deflate'));
       ctx.log.debug('Decompressing deflate response');
-    } else if (contentEncoding === 'br') {
-      // Use brocha for brotli decompression
-      try {
-        // Dynamic import to avoid loading if not needed
-        const { decompress } = await import('brocha');
-
-        // Read the entire compressed body
-        const compressedData = new Uint8Array(await response.arrayBuffer());
-
-        // Decompress using brocha
-        const decompressedData = decompress(compressedData);
-
-        // Create a new response with decompressed data
-        const headers = new Headers(response.headers);
-        headers.delete('content-encoding');
-        headers.delete('content-length'); // Length will change after decompression
-
-        ctx.log.debug('Decompressed brotli response');
-        return new Response(decompressedData, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
-      } catch (error) {
-        ctx.log.error('Failed to decompress brotli:', error);
-        // Fall back to returning compressed response
-        return response;
-      }
     } else {
       // Unknown encoding, return as-is
       ctx.log.warn(`Unknown content-encoding: ${contentEncoding}, returning compressed response`);

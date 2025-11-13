@@ -78,7 +78,7 @@ describe('decompress', () => {
       assert.strictEqual(result.headers.get('content-encoding'), null);
     });
 
-    it('should decompress brotli content', async () => {
+    it('should return brotli content as-is (not supported)', async () => {
       const originalText = 'Hello World - this is brotli compressed content!';
       const compressed = zlib.brotliCompressSync(Buffer.from(originalText));
 
@@ -89,9 +89,13 @@ describe('decompress', () => {
         },
       });
 
+      // Brotli is intentionally not supported to prevent cache poisoning
       const result = await decompressResponse(response, mockCtx);
-      assert.strictEqual(await result.text(), originalText);
-      assert.strictEqual(result.headers.get('content-encoding'), null);
+      // Should return the response as-is with encoding header intact
+      assert.strictEqual(result.headers.get('content-encoding'), 'br');
+      // Content should still be compressed
+      const resultBuffer = await result.arrayBuffer();
+      assert.deepStrictEqual(new Uint8Array(resultBuffer), new Uint8Array(compressed));
     });
 
     it('should preserve response status and other headers', async () => {

@@ -11,7 +11,7 @@
  */
 
 import { ffetch } from './util.js';
-import inlineResources, { inlineConfigured } from './inlines.js';
+import inlineResources from './inlines.js';
 
 /**
  * @param {Context} ctx
@@ -35,25 +35,15 @@ export default async function handler(ctx) {
     ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
   }
   ctx.log.debug('fetching: ', beurl);
-  // Debug logging to trace accept-encoding handling
-  const isInlineConfigured = inlineConfigured(ctx);
-  const originalAcceptEncoding = ctx.info.headers['accept-encoding'];
-  const finalAcceptEncoding = isInlineConfigured ? 'gzip, deflate' : originalAcceptEncoding;
-
-  ctx.log.debug('Accept-Encoding Debug:', {
-    inlineConfigured: isInlineConfigured,
-    original: originalAcceptEncoding,
-    final: finalAcceptEncoding,
-    config: ctx.config,
-  });
 
   const fetchHeaders = {
     ...ctx.info.headers,
-    // Force gzip/deflate only when inlining is configured to prevent brotli encoding issues.
-    // Some runtimes (e.g., Fastly) don't automatically decompress brotli, causing UTF-8
-    // decode errors when inlines.js tries to read the compressed response as text.
-    // Even if the client doesn't request brotli, backends may return cached brotli responses.
-    'accept-encoding': finalAcceptEncoding,
+    // Always force gzip/deflate to prevent brotli cache poisoning.
+    // Fastly's local cache doesn't include accept-encoding in the cache key, so if one request
+    // caches a brotli response, subsequent requests could receive it even if they don't
+    // request brotli. Since neither Fastly nor Cloudflare support brotli in DecompressionStream,
+    // we must prevent brotli from ever being requested or cached.
+    'accept-encoding': 'gzip, deflate',
     ...(isPipelineReq ? {
       'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
     } : {}),
