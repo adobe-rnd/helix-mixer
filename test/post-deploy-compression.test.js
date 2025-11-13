@@ -55,8 +55,10 @@ const providers = [
  */
 async function verifyCompressionAndGetHTML(res) {
   const contentEncoding = res.headers.get('content-encoding');
+  const contentLength = res.headers.get('content-length');
 
   let html;
+  let compressedSize;
 
   // Node.js fetch automatically decompresses gzip and brotli responses
   // but keeps the content-encoding header. Handle this by using res.text()
@@ -65,10 +67,14 @@ async function verifyCompressionAndGetHTML(res) {
     // CDN transparently compressed with brotli or gzip
     // Node.js fetch auto-decompresses these, so use res.text()
     html = await res.text();
+    // For auto-decompressed responses, we can't measure compressed size directly
+    // But we can use content-length header if present
+    compressedSize = contentLength ? parseInt(contentLength, 10) : null;
   } else {
     // For other encodings (deflate, identity, or none), read as buffer
     const rawBody = await res.arrayBuffer();
     const buffer = Buffer.from(rawBody);
+    compressedSize = buffer.length;
 
     if (!contentEncoding || contentEncoding === 'identity') {
       // No compression or explicit identity
@@ -92,8 +98,17 @@ async function verifyCompressionAndGetHTML(res) {
     'Response must be valid HTML',
   );
 
-  // The fact that we successfully got valid HTML confirms the compression
-  // is working correctly (either CDN compressed or transparent passthrough)
+  // Verify actual compression happened (if content-encoding indicates compression)
+  const uncompressedSize = Buffer.byteLength(html, 'utf8');
+  if (contentEncoding && contentEncoding !== 'identity' && compressedSize) {
+    // For compressed responses, compressed size should be significantly smaller
+    // Allow some overhead but expect at least 10% compression ratio
+    const compressionRatio = compressedSize / uncompressedSize;
+    assert.ok(
+      compressionRatio < 0.9,
+      `Expected compression but sizes similar: compressed=${compressedSize}, uncompressed=${uncompressedSize}, ratio=${compressionRatio.toFixed(2)}`,
+    );
+  }
 
   return html;
 }
