@@ -113,7 +113,16 @@ providers
                   !contentEncoding || contentEncoding === 'identity',
                   `Expected no encoding or 'identity' but got ${contentEncoding}`,
                 );
-              } else if (encoding === 'br' || encoding === 'gzip' || encoding === 'deflate') {
+              } else if (encoding === 'br') {
+                // Brotli is never returned - we force gzip/deflate to prevent cache poisoning
+                // The mixer should return gzip or deflate instead
+                if (contentEncoding && contentEncoding !== 'identity') {
+                  assert.ok(
+                    contentEncoding === 'gzip' || contentEncoding === 'deflate',
+                    `Expected gzip or deflate (brotli blocked) but got ${contentEncoding}`,
+                  );
+                }
+              } else if (encoding === 'gzip' || encoding === 'deflate') {
                 // May or may not be compressed depending on backend support
                 // But if compressed, should match what we requested
                 if (contentEncoding && contentEncoding !== 'identity') {
