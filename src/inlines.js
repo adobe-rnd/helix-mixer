@@ -109,6 +109,22 @@ ${' '.repeat(indentCount)}</${tag}>`);
 }
 
 /**
+ * Determine the compression hint based on client's Accept-Encoding.
+ * @param {Context} ctx
+ * @returns {string|undefined} 'gzip' or 'deflate' if supported, undefined otherwise
+ */
+function getCompressionHint(ctx) {
+  const acceptEncoding = ctx.info.headers['accept-encoding']?.toLowerCase() || '';
+  if (acceptEncoding.includes('gzip')) {
+    return 'gzip';
+  }
+  if (acceptEncoding.includes('deflate')) {
+    return 'deflate';
+  }
+  return undefined;
+}
+
+/**
  * Check if the config defines inlines.
  * @param {Context} ctx
  * @returns {boolean}
@@ -166,10 +182,12 @@ export default async function inlineResources(ctx, beurl, response) {
   }
   const meta = extractInlineMeta(markup);
   if (!meta.nav && !meta.footer) {
+    const compressionHint = getCompressionHint(ctx);
     return new Response(markup, {
       status: response.status,
       headers: {
         ...Object.fromEntries(response.headers.entries()),
+        ...(compressionHint ? { 'x-compress-hint': compressionHint } : {}),
       },
     });
   }
@@ -194,11 +212,13 @@ export default async function inlineResources(ctx, beurl, response) {
     }
   }
 
+  const compressionHint = getCompressionHint(ctx);
   return new Response(markup, {
     status: response.status,
     headers: {
       ...Object.fromEntries(response.headers.entries()),
       ...cacheHeaders,
+      ...(compressionHint ? { 'x-compress-hint': compressionHint } : {}),
     },
   });
 }
