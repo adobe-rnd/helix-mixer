@@ -12,7 +12,6 @@
 
 import { ffetch } from './util.js';
 import { readResponseText } from './decompress.js';
-import { compressText } from './compress.js';
 
 /**
  * @type {string[]}
@@ -192,13 +191,8 @@ export default async function inlineResources(ctx, beurl, response) {
       headers.set('x-compress-hint', compressionHint);
     }
 
-    // Re-compress with the client's preferred format
-    const body = await compressText(markup, compressionHint, ctx);
-    if (compressionHint) {
-      headers.set('content-encoding', compressionHint);
-    }
-
-    return new Response(body, {
+    // Return uncompressed markup - CDN will handle compression via x-compress-hint
+    return new Response(markup, {
       status: response.status,
       headers,
     });
@@ -238,13 +232,8 @@ export default async function inlineResources(ctx, beurl, response) {
     headers.set(key, value);
   });
 
-  // Re-compress with the client's preferred format
-  const body = await compressText(markup, compressionHint, ctx);
-  if (compressionHint) {
-    headers.set('content-encoding', compressionHint);
-  }
-
-  return new Response(body, {
+  // Return uncompressed markup - CDN will handle compression via x-compress-hint
+  return new Response(markup, {
     status: response.status,
     headers,
   });
