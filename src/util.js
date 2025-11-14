@@ -105,6 +105,9 @@ export function isCustomDomain(url, req) {
   if (!url?.hostname) {
     return true;
   }
+  if (url.hostname === 'localhost') {
+    return false;
+  }
 
   const servicePatterns = [
     '.workers.dev',

@@ -1,3 +1,43 @@
+## [1.3.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.1...v1.3.2) (2025-11-10)
+
+
+### Bug Fixes
+
+* minor tweak and tests ([fe6bd3b](https://github.com/adobe-rnd/helix-mixer/commit/fe6bd3b248856aa6921647b48d0f95e5357681a7))
+
+## [1.3.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.0...v1.3.1) (2025-11-10)
+
+
+### Bug Fixes
+
+* handle more cache keys ([2a41192](https://github.com/adobe-rnd/helix-mixer/commit/2a411925bb7661e4aaf77b0e47c7cc2bc7f70c3a))
+
+# [1.3.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.3...v1.3.0) (2025-11-07)
+
+
+### Bug Fixes
+
+* indentation, minor tweaks ([ccb570b](https://github.com/adobe-rnd/helix-mixer/commit/ccb570b094c78798340b5ee71fcdf6ba47ff831d))
+
+
+### Features
+
+* inline nav/footer ([d6d4ffd](https://github.com/adobe-rnd/helix-mixer/commit/d6d4ffdd3858002e9d5a263eda3ef39d9c1617fe))
+
+## [1.2.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.2...v1.2.3) (2025-10-01)
+
+
+### Bug Fixes
+
+* change path to pathprefix ([#30](https://github.com/adobe-rnd/helix-mixer/issues/30)) ([390d8ef](https://github.com/adobe-rnd/helix-mixer/commit/390d8efe2662f249fb03abab004a3b1e8d63b98f))
+
+## [1.2.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.1...v1.2.2) (2025-09-09)
+
+
+### Bug Fixes
+
+* update config tests to work in CI environment ([5c30a49](https://github.com/adobe-rnd/helix-mixer/commit/5c30a498b7884f618f9813ec544e55d88b5fec62))
+
 ## [1.2.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.2.0...v1.2.1) (2025-09-04)
 
 

@@ -16,7 +16,7 @@ import handler from './handler.js';
 import { errorResponse, getEffectiveDomain, isCustomDomain } from './util.js';
 
 /**
- * @param {import("@cloudflare/workers-types/experimental").ExecutionContext} ectx
+ * @param {import("@cloudflare/workers-types").ExecutionContext} ectx
  * @param {Request} req the HTTP request object
  * @param {Env} env
  * @returns {Promise<Context>}

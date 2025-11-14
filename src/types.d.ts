@@ -3,6 +3,7 @@ import type { ExecutionContext, KVNamespace, Fetcher } from "@cloudflare/workers
 declare global {
   export interface BackendConfig {
     origin: string;
+    pathPrefix?: string;
     path?: string;
     protocol?: "http" | "https";
   }
@@ -12,6 +13,9 @@ declare global {
     patterns: Record<string, string>;
     // backend ID -> backend configs
     backends: Record<string, BackendConfig>;
+    // inlines
+    inlineNav?: boolean;
+    inlineFooter?: boolean;
   }
 
   /**
