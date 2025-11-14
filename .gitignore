@@ -10,3 +10,5 @@ wrangler-versioned.toml
 .dev.vars
 .wrangler
 *.pem
+bin/main.wasm
+pkg/helix-mixer.tar.gz

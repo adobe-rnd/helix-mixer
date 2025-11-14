@@ -1,0 +1,26 @@
+# Fastly Compute configuration for helix-mixer
+# https://developer.fastly.com/reference/fastly-toml/
+
+authors = ["helix-mixer"]
+description = "helix-mixer universal edge service"
+language = "javascript"
+manifest_version = 3
+name = "helix-mixer"
+service_id = ""
+
+[scripts]
+  build = "node node_modules/@fastly/js-compute/js-compute-runtime-cli.js --enable-experimental-high-resolution-time-methods bin/dist/helix3/helix-mixer-edge-bundle.cjs bin/main.wasm"
+
+[local_server]
+  [local_server.backends]
+    [local_server.backends.aem_live]
+      url = "https://main--example--org.aem.live"
+    [local_server.backends.dns_google]
+      url = "https://dns.google"
+    [local_server.backends.cloudflare_dns]
+      url = "https://1.1.1.1"
+
+  [local_server.dictionaries]
+    [local_server.dictionaries.secrets]
+      format = "inline-toml"
+      contents = { VERSION = "1.0.0-dev", ENVIRONMENT = "dev" }
