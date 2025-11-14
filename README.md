@@ -1,6 +1,6 @@
 # helix-mixer
 
-A Cloudflare Worker service that acts as a smart reverse proxy for Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service with document-based authoring sites, routing requests to different backends based on configurable URL patterns.
+A universal edge service (Cloudflare Workers + Fastly Compute@Edge) that acts as a smart reverse proxy for Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service with document-based authoring sites, routing requests to different backends based on configurable URL patterns.
 
 ## Overview
 
@@ -99,50 +99,99 @@ With the above configuration:
 - Missing backends automatically fallback to `{ref}--{site}--{org}.aem.live`
 - All requests are proxied with cache disabled (`cacheEverything: false`)
 
+### DNS Lookup (Custom Domains)
+- All edge runtimes use DNS-over-HTTPS (RFC 8484) with GET requests to `/dns-query?dns=...`
+- Leverages dynamic backends to DNS providers (`dns.google`, `1.1.1.1`) for cacheability and performance
+- DNS requests race between multiple providers for optimal latency
+
 ## Development
 
 ### Prerequisites
 - Node.js 18+
 - npm or equivalent package manager
-- Wrangler CLI for Cloudflare Workers
+- Wrangler CLI for Cloudflare Workers (installed via devDependencies)
+- Fastly CLI for Fastly Compute (install separately: `brew install fastly`)
+- helix-deploy (installed via devDependencies) for universal build/deploy
 
 ### Setup
 ```bash
 npm install
 ```
 
-### Available Scripts
-- `npm run dev` - Start local development server (requires `.dev.vars`)
-- `npm run build` - Build the worker
-- `npm test` - Run test suite with coverage
-- `npm run lint` - Run ESLint
-- `npm run deploy:dev` - Deploy to development environment
-- `npm run deploy:ci` - Deploy to CI environment  
-- `npm run deploy:production` - Deploy to production
+### Local Development
 
-### Environment Variables
-Create a `.dev.vars` file for local development:
+Run both edge runtimes locally in parallel:
+
+```bash
+npm run dev
 ```
-REF=main
-SITE=your-site
-ORG=your-org
-PRODUCT_PIPELINE_TOKEN=your-token
+
+This starts:
+- **Cloudflare Workers** dev server on the default Wrangler port
+- **Fastly Compute** local server on http://127.0.0.1:7676
+
+Or run them individually:
+```bash
+npm run dev:cloudflare  # Cloudflare Workers only
+npm run dev:fastly      # Fastly Compute only
+```
+
+### Remote Development (CI Services)
+
+Monitor live CI deployments by tailing logs from both services:
+
+```bash
+npm run tail
+```
+
+This tails logs from:
+- **Cloudflare CI**: `cloudflareci.aem-mesh.live`
+- **Fastly CI**: `fastlyci.aem.network`
+
+Or tail logs individually:
+```bash
+npm run tail:cloudflare  # Cloudflare CI logs only
+npm run tail:fastly      # Fastly CI logs only
+```
+
+#### CI Service URLs
+
+Test the CI deployments at:
+- Cloudflare: `https://{ref}--{site}--{org}.cloudflareci.aem-mesh.live`
+- Fastly: `https://{ref}--{site}--{org}.fastlyci.aem.network`
+
+Example: `https://main--helix-website--adobe.cloudflareci.aem-mesh.live/`
+
+### Building
+
+```bash
+npm run build  # Build universal edge bundle for both Cloudflare and Fastly
 ```
 
 ### Testing
+
 ```bash
-npm test
+npm test              # Run unit tests with coverage
+npm run lint          # Run ESLint
+npm run test-postdeploy  # Run post-deployment tests against CI services
 ```
 
 ## Deployment
 
-The service is deployed to Cloudflare Workers across three environments:
+### Universal Edge (recommended)
+- Uses `@adobe/helix-deploy` with `@adobe/helix-deploy-plugin-edge` to package and deploy for both providers.
+- GitHub Actions workflows `build-edge` (for branches) and `semantic-release-edge` (for `main`) run tests, build, deploy, and execute post‑deploy tests.
 
-- **Development**: `helix-mixer-dev.workers.dev`
-- **CI**: `helix-mixer-ci.workers.dev`  
-- **Production**: `helix-mixer.workers.dev`
+Required GitHub secrets (ask maintainers for values):
+- `HLX_FASTLY_CI_ID`, `HLX_FASTLY_CI_AUTH` (for CI deployments) and `HLX_FASTLY_AUTH` (for release)
+- `HLX_CLOUDFLARE_EMAIL`, `HLX_CLOUDFLARE_ACCOUNT`, `HLX_CLOUDFLARE_AUTH`
 
-Deployment uses semantic-release for automated versioning and is triggered via GitHub Actions.
+Domains used in post‑deploy tests can be overridden via env:
+- `HLX_CLOUDFLARE_CI_DOMAIN`, `HLX_CLOUDFLARE_PROD_DOMAIN`
+- `HLX_FASTLY_CI_DOMAIN`, `HLX_FASTLY_PROD_DOMAIN`
+
+### CI/CD
+The unified workflow `.github/workflows/main.yaml` runs branch CI (build, deploy, post‑deploy test) and main branch releases.
 
 ## License
 

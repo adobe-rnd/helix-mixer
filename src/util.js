@@ -89,12 +89,19 @@ export function globToRegExp(glob) {
   return new RegExp(`^${reString}$`);
 }
 
+// Shared CI domain patterns
+const CI_PATTERNS = [
+  '.fastlyci.aem.network',
+  '.cloudflareci.aem-mesh.live',
+];
+
 /**
  * Checks if a URL has a custom domain (not a known service domain)
  * @param {URL} url - The URL object to check
+ * @param {Request} req - The request object to check
  * @returns {boolean} - false if hostname ends with known service patterns, true otherwise
  */
-export function isCustomDomain(url) {
+export function isCustomDomain(url, req) {
   if (!url?.hostname) {
     return true;
   }
@@ -108,41 +115,30 @@ export function isCustomDomain(url) {
     '.aem-mesh.live',
   ];
 
-  return !servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
+  const isServiceDomain = servicePatterns.some((pattern) => url.hostname.endsWith(pattern));
+  const isCIDomain = CI_PATTERNS.some((pattern) => url.hostname.endsWith(pattern));
+  const hasDomainOverride = isCIDomain && !!req?.headers?.get('x-custom-domain');
+
+  return hasDomainOverride || !isServiceDomain;
 }
 
 /**
- * Resolves a custom domain's CNAME record and returns it if it matches the
- * pattern *--*--*.domains.aem.network
- * @param {string} domain - The custom domain to resolve
- * @returns {Promise<string|null>} - The CNAME record if it matches the pattern, null otherwise
+ * Gets the effective domain from a request, considering CI host overrides
+ * @param {Request} req - The request object
+ * @returns {string} - The effective domain
+ * (from x-custom-domain header for CI hosts, or Host header otherwise)
  */
-export async function resolveCustomDomain(domain) {
-  try {
-    // Use dynamic import to only load dns when needed
-    const dns = await import('node:dns');
+export function getEffectiveDomain(req) {
+  const url = new URL(req.url);
+  const isCIDomain = CI_PATTERNS.some((pattern) => url.hostname.endsWith(pattern));
 
-    // Resolve CNAME records for the domain
-    const cnameRecords = await dns.promises.resolve(domain, 'CNAME');
-
-    if (!cnameRecords || cnameRecords.length === 0) {
-      return null;
+  if (isCIDomain) {
+    const customDomain = req.headers.get('x-custom-domain');
+    if (customDomain) {
+      return customDomain;
     }
-
-    // Get the first CNAME record
-    const cname = cnameRecords[0];
-
-    // Check if it matches the pattern *--*--*.domains.aem.network
-    const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
-
-    if (pattern.test(cname)) {
-      return cname;
-    }
-
-    return null;
-  } catch (error) {
-    // If DNS resolution fails or domain doesn't exist, return null
-    console.debug(`Failed to resolve CNAME for ${domain}:`, error.message);
-    return null;
   }
+
+  // Return the Host header
+  return req.headers.get('host');
 }

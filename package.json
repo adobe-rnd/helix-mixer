@@ -7,18 +7,21 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
-    "build": "node build.js",
+    "build": "hedy --build --verbose",
     "lint": "eslint . --ext js,cjs,mjs",
     "test": "c8 --all --include 'src/**/*.js' mocha -i -g 'Post-Deploy' --spec 'test/**/*.test.js'",
-    "dev": "if test -e .dev.vars; then wrangler dev --; else echo \"Need a .dev.vars files before starting local dev server\"; fi",
-    "dev:remote": "wrangler dev --remote",
-    "test-postdeploy": "mocha --spec test/post-deploy.test.js",
-    "deploy:dev": "node prepare-deploy.js && wrangler deploy -c wrangler-versioned.toml",
-    "deploy:ci": "node prepare-deploy.js && wrangler deploy -e ci  -c wrangler-versioned.toml",
-    "deploy:production": "node prepare-deploy.js && wrangler deploy -e production -c wrangler-versioned.toml",
+    "dev": "npm run dev:cloudflare & npm run dev:fastly & wait",
+    "dev:cloudflare": "wrangler dev --remote --no-bundle",
+    "dev:fastly": "fastly compute serve",
+    "test-postdeploy": "mocha --spec 'test/post-deploy*.test.js'",
+    "deploy:ci": "hedy --build --verbose --deploy --fastly-auth $HLX_FASTLY_AUTH --compute-service-id $HLX_FASTLY_ID --cloudflare-email $HLX_CLOUDFLARE_EMAIL --cloudflare-account-id $HLX_CLOUDFLARE_ACCOUNT --cloudflare-auth $HLX_CLOUDFLARE_AUTH --name ${HLX_CLOUDFLARE_NAME:-helix-mixer-ci}",
+    "deploy:production": "hedy --build --verbose --deploy --fastly-auth $HLX_FASTLY_AUTH --compute-service-id $HLX_FASTLY_ID --cloudflare-email $HLX_CLOUDFLARE_EMAIL --cloudflare-account-id $HLX_CLOUDFLARE_ACCOUNT --cloudflare-auth $HLX_CLOUDFLARE_AUTH --name ${HLX_CLOUDFLARE_NAME:-helix-mixer}",
     "log": "wrangler tail --format pretty",
     "log:ci": "wrangler tail --format pretty -e ci",
     "log:production": "wrangler tail --format pretty -e production",
+    "tail": "npm run tail:cloudflare & npm run tail:fastly & wait",
+    "tail:cloudflare": "wrangler tail --format pretty -e ci",
+    "tail:fastly": "fastly log-tail --service-id=lPPRX1x0P3LzXEMhqPfOl7",
     "semantic-release": "semantic-release",
     "semantic-release-dry": "semantic-release --dry-run --no-ci --branches $CI_BRANCH"
   },
@@ -39,10 +42,27 @@
     "reporter": "mocha-multi-reporters",
     "reporter-options": "configFile=.mocha-multi.json"
   },
+  "wsk": {
+    "target": [
+      "c@e",
+      "cloudflare"
+    ],
+    "arch": "edge",
+    "distDirectory": "dist",
+    "entryFile": "src/index.js",
+    "plugin": "@adobe/helix-deploy-plugin-edge",
+    "edgeExternals": [],
+    "fastlyGateway": "deploy-test.anywhere.run",
+    "package": {
+      "name": "helix3"
+    }
+  },
   "devDependencies": {
     "@adobe/eslint-config-helix": "2.0.9",
     "@adobe/fetch": "4.2.2",
-    "@cloudflare/workers-types": "4.20251107.0",
+    "@adobe/helix-deploy": "12.4.39",
+    "@adobe/helix-deploy-plugin-edge": "1.1.1",
+    "@cloudflare/workers-types": "4.20251113.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/exec": "6.0.3",
     "@semantic-release/git": "10.0.1",
@@ -62,8 +82,9 @@
     "nock": "13.5.4",
     "semantic-release": "24.2.7",
     "sinon": "^19.0.2",
-    "wrangler": "4.46.0"
+    "wrangler": "4.47.0"
   },
+  "dependencies": {},
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
   }

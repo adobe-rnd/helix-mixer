@@ -11,7 +11,7 @@
  */
 
 import { ffetch } from './util.js';
-import inlineResources, { inlineConfigured } from './inlines.js';
+import inlineResources from './inlines.js';
 
 /**
  * @param {Context} ctx
@@ -35,24 +35,38 @@ export default async function handler(ctx) {
     ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
   }
   ctx.log.debug('fetching: ', beurl);
+
+  const fetchHeaders = {
+    ...ctx.info.headers,
+    // Always force gzip/deflate to prevent brotli cache poisoning.
+    // Fastly's local cache doesn't include accept-encoding in the cache key, so if one request
+    // caches a brotli response, subsequent requests could receive it even if they don't
+    // request brotli. Since neither Fastly nor Cloudflare support brotli in DecompressionStream,
+    // we must prevent brotli from ever being requested or cached.
+    'accept-encoding': 'gzip, deflate',
+    ...(isPipelineReq ? {
+      'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
+    } : {}),
+  };
+
+  ctx.log.debug('Fetching with headers:', fetchHeaders);
+
   let beresp = await ffetch(impl)(beurl.toString(), {
     method: ctx.info.method,
     body: ctx.info.body,
     redirect: 'manual',
-    headers: {
-      ...ctx.info.headers,
-      // TODO: handle brotli for inlined resources
-      'accept-encoding': inlineConfigured(ctx) && ctx.info.headers['accept-encoding']?.includes('br')
-        ? ctx.info.headers['accept-encoding'].replace('br', '')
-        : ctx.info.headers['accept-encoding'],
-      ...(isPipelineReq ? {
-        'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
-      } : {}),
-    },
+    headers: fetchHeaders,
     cf: {
       cacheEverything: false,
       cacheTtl: 0,
     },
+  });
+
+  ctx.log.debug('Backend response headers:', {
+    status: beresp.status,
+    contentType: beresp.headers.get('content-type'),
+    contentEncoding: beresp.headers.get('content-encoding'),
+    cacheStatus: beresp.headers.get('cf-cache-status'),
   });
 
   beresp = await inlineResources(ctx, beurl, beresp);
