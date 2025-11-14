@@ -62,6 +62,7 @@ jobs:
       - name: Semantic Release
         run: npm run semantic-release
         env:
+          POST_DEPLOY_SITE_NAME: ${{ secrets.POST_DEPLOY_SITE_NAME }}
           GITHUB_TOKEN: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # CI (prepare) deployment env
           HLX_FASTLY_CI_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
