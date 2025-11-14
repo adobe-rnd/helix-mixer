@@ -1,12 +1,12 @@
 name = "helix-mixer"
-main = "dist/index.mjs"
+main = "dist/helix3/helix-mixer-edge-bundle.cjs"
 compatibility_date = "2024-03-21"
 compatibility_flags = ["nodejs_compat"]
 account_id = "852dfa4ae1b0d579df29be65b986c101"
 workers_dev = true
 send_metrics = false
 
-build = { command = "npm install && node build.js" }
+build = { command = "npm install && npm run build" }
 
 [vars]
 VERSION = "@@VERSION@@-dev"
