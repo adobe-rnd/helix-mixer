@@ -76,3 +76,4 @@ jobs:
         run: npm run test-postdeploy
         env:
           TEST_PRODUCTION: true
+          POST_DEPLOY_SITE_NAME: ${{ secrets.POST_DEPLOY_SITE_NAME }}
