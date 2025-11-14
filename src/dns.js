@@ -157,18 +157,37 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
 
 /**
  * Resolve custom domains to network origin CNAMEs using DNS-over-HTTPS.
- * Uses DoH GET for universal edge compatibility.
+ * Races multiple DNS providers for optimal latency:
+ * - 1.1.1.1 (Cloudflare) - faster when running on Cloudflare Workers
+ * - dns.google - faster when running on Fastly or other networks
+ * Uses Promise.any() to return the first successful (non-null) response.
  * @param {string} domain
  * @returns {Promise<string|null>}
  */
 export async function resolveCustomDomain(domain) {
   const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
+  const providers = [
+    'https://1.1.1.1/dns-query',
+    'https://dns.google/dns-query',
+  ];
+
   try {
-    const cname = await resolveCnameViaDoH(domain);
-    return cname && pattern.test(cname) ? cname : null;
+    // Race DNS providers - use first provider that returns a valid CNAME
+    // Reject null results so Promise.any continues to the next provider
+    const cname = await Promise.any(
+      providers.map(async (provider) => {
+        const result = await resolveCnameViaDoH(domain, provider);
+        if (!result || !pattern.test(result)) {
+          throw new Error(`No valid CNAME from ${provider}`);
+        }
+        return result;
+      }),
+    );
+    return cname;
   } catch (e) {
+    // All providers failed or returned null
     // eslint-disable-next-line no-console
-    console.debug(`DoH CNAME failed for ${domain}: ${e.message}`);
+    console.debug(`DoH CNAME failed for ${domain}: ${e.message || 'all providers failed'}`);
     return null;
   }
 }

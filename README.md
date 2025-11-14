@@ -100,8 +100,9 @@ With the above configuration:
 - All requests are proxied with cache disabled (`cacheEverything: false`)
 
 ### DNS Lookup (Custom Domains)
-- Cloudflare: uses Node’s `dns` API (`nodejs_compat`) for CNAME resolution.
-- Fastly and other edge runtimes: use DNS-over-HTTPS (RFC 8484) with GET to `/dns-query?dns=...`, leveraging dynamic backends to `dns.google` for cacheability and performance.
+- All edge runtimes use DNS-over-HTTPS (RFC 8484) with GET requests to `/dns-query?dns=...`
+- Leverages dynamic backends to DNS providers (`dns.google`, `1.1.1.1`) for cacheability and performance
+- DNS requests race between multiple providers for optimal latency
 
 ## Development
 
