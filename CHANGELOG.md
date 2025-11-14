@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.0...v1.4.1) (2025-11-14)
+
+
+### Bug Fixes
+
+* forward push invalidation headers ([1aae851](https://github.com/adobe-rnd/helix-mixer/commit/1aae85111718d289b3d12238e6f35383bf7559f9))
+
 # [1.4.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.2...v1.4.0) (2025-11-14)
 
 
