@@ -1,3 +1,32 @@
+# [1.4.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.2...v1.4.0) (2025-11-14)
+
+
+### Bug Fixes
+
+* **ci:** resolve helix-deploy peer conflict (use helix-deploy ^13, plugin-edge ^1.1.6, add plugin-webpack) ([f31120a](https://github.com/adobe-rnd/helix-mixer/commit/f31120af8e93eb9b614893ed89c8778e77dc8a70))
+* **dns:** use dynamic backends ([0c6d4fb](https://github.com/adobe-rnd/helix-mixer/commit/0c6d4fb4fbb526aaba9c26cccdf0e0ce0693475d))
+* exclude compression tests from main test suite ([3352a3c](https://github.com/adobe-rnd/helix-mixer/commit/3352a3c9928a955bf5590ade33aa4f3b1aa6abba))
+* handle Node.js fetch auto-decompression in compression tests ([97d9906](https://github.com/adobe-rnd/helix-mixer/commit/97d9906a58e4bb6973450bb111031d49980e8678))
+* **index:** remove debug logging that may interfere with edge runtime ([7b094f1](https://github.com/adobe-rnd/helix-mixer/commit/7b094f1cfc32f27ad7aa8b2b5f0c673a4d419f41))
+* **post-deploy:** distinguish between release and ci ([cc4854e](https://github.com/adobe-rnd/helix-mixer/commit/cc4854e0060fec659e0c46aaf7217cf7397e2090))
+* prevent brotli cache poisoning by excluding it globally ([b6b8c3a](https://github.com/adobe-rnd/helix-mixer/commit/b6b8c3a0150e92c8a103728d51e75b088ff81de4))
+* prevent brotli encoding issues on Fastly runtime ([b5d12bf](https://github.com/adobe-rnd/helix-mixer/commit/b5d12bfba0876b7d797d07c8ef708f3283ab8d26))
+* remove manual compression in favor of CDN transparent compression ([402a1ed](https://github.com/adobe-rnd/helix-mixer/commit/402a1ed94046b74e94326960a29ba122f7eb1014))
+* resolve body already read error in compression tests ([5651767](https://github.com/adobe-rnd/helix-mixer/commit/56517676324d50d1260f6f9a630a5817bc2fb10f))
+* simplify compression tests and fix recompression logic ([dfc6bb9](https://github.com/adobe-rnd/helix-mixer/commit/dfc6bb97c2aedd25ff2b4fdead46d4021a897e2f))
+* **test:** remove flaky x-error header assertion in post-deploy test ([3ef3765](https://github.com/adobe-rnd/helix-mixer/commit/3ef3765fda99cf3a5ca063c08f5cda1b5ed38809))
+* tweaks ([45f5a24](https://github.com/adobe-rnd/helix-mixer/commit/45f5a24dcc435da54675a1a2839c42be6b4f3c85))
+
+
+### Features
+
+* add compression ratio verification to tests ([b47f6cb](https://github.com/adobe-rnd/helix-mixer/commit/b47f6cbdef976e749b30647b556f2480120f341c))
+* add proper decompression support for compressed responses ([42374e7](https://github.com/adobe-rnd/helix-mixer/commit/42374e7a1054eb881ea29bc49969af142429f62c))
+* add response recompression after HTML inlining ([8e04fdc](https://github.com/adobe-rnd/helix-mixer/commit/8e04fdcae68f65f8ca5d17c2002e1ab0d1552d56))
+* add x-compress-hint header for Fastly transparent compression ([26cfafd](https://github.com/adobe-rnd/helix-mixer/commit/26cfafd5f308ca470f1944a671a77a2eadaaed00))
+* **dns:** allow specifying dns provider ([c78a0fb](https://github.com/adobe-rnd/helix-mixer/commit/c78a0fb3b7698c1c583516cf78d54bea2299947d))
+* **index:** allow overriding the effective domain using ([3c05f33](https://github.com/adobe-rnd/helix-mixer/commit/3c05f336f4044f4ea7ecdfd45b6e208041a06e9d))
+
 ## [1.3.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.3.1...v1.3.2) (2025-11-10)
 
 
