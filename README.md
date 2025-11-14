@@ -109,7 +109,8 @@ With the above configuration:
 ### Prerequisites
 - Node.js 18+
 - npm or equivalent package manager
-- Wrangler CLI for Cloudflare Workers (optional, for local dev)
+- Wrangler CLI for Cloudflare Workers (installed via devDependencies)
+- Fastly CLI for Fastly Compute (install separately: `brew install fastly`)
 - helix-deploy (installed via devDependencies) for universal build/deploy
 
 ### Setup
@@ -117,27 +118,62 @@ With the above configuration:
 npm install
 ```
 
-### Available Scripts
-- `npm run dev` - Start local Cloudflare dev server (requires `.dev.vars`)
-- `npm run build` - Build the worker bundle for Cloudflare
-- `npm test` - Run unit tests with coverage
-- `npm run lint` - Run ESLint
-- `npm run fastly-build` - Build universal edge bundle with helix-deploy (hedy)
-- `npm run deploy:edge` - Deploy to Cloudflare and Fastly using helix-deploy + plugin-edge
-- `npm run deploy:dev|deploy:ci|deploy:production` - Legacy Cloudflare-only deploys via wrangler
+### Local Development
 
-### Environment Variables
-Create a `.dev.vars` file for local development:
+Run both edge runtimes locally in parallel:
+
+```bash
+npm run dev
 ```
-REF=main
-SITE=your-site
-ORG=your-org
-PRODUCT_PIPELINE_TOKEN=your-token
+
+This starts:
+- **Cloudflare Workers** dev server on the default Wrangler port
+- **Fastly Compute** local server on http://127.0.0.1:7676
+
+Or run them individually:
+```bash
+npm run dev:cloudflare  # Cloudflare Workers only
+npm run dev:fastly      # Fastly Compute only
+```
+
+### Remote Development (CI Services)
+
+Monitor live CI deployments by tailing logs from both services:
+
+```bash
+npm run tail
+```
+
+This tails logs from:
+- **Cloudflare CI**: `cloudflareci.aem-mesh.live`
+- **Fastly CI**: `fastlyci.aem.network`
+
+Or tail logs individually:
+```bash
+npm run tail:cloudflare  # Cloudflare CI logs only
+npm run tail:fastly      # Fastly CI logs only
+```
+
+#### CI Service URLs
+
+Test the CI deployments at:
+- Cloudflare: `https://{ref}--{site}--{org}.cloudflareci.aem-mesh.live`
+- Fastly: `https://{ref}--{site}--{org}.fastlyci.aem.network`
+
+Example: `https://main--helix-website--adobe.cloudflareci.aem-mesh.live/`
+
+### Building
+
+```bash
+npm run build  # Build universal edge bundle for both Cloudflare and Fastly
 ```
 
 ### Testing
+
 ```bash
-npm test
+npm test              # Run unit tests with coverage
+npm run lint          # Run ESLint
+npm run test-postdeploy  # Run post-deployment tests against CI services
 ```
 
 ## Deployment
