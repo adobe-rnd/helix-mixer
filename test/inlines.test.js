@@ -231,4 +231,71 @@ describe('inlines tests', () => {
     assert.strictEqual(result.headers.get('edge-cache-tag'), 'bar,bar2,ect1,ect2');
     assert.strictEqual(result.headers.get('cache-tag'), 'baz,baz2,ec1,ec2');
   });
+
+  it('should send push invalidation headers for nav/footer subrequests', async () => {
+    const localFetch = globalThis.fetch;
+    after(() => {
+      globalThis.fetch = localFetch;
+    });
+
+    let fetchCalls = 0;
+    globalThis.fetch = async (...args) => {
+      const [_, { headers }] = args;
+      fetchCalls += 1;
+      assert.strictEqual(headers['x-push-invalidation'], 'enabled');
+      assert.strictEqual(headers['x-byo-cdn-type'], 'akamai');
+      return localFetch.call(globalThis, ...args);
+    };
+
+    const ctx = TEST_CONTEXT({
+      info: {
+        headers: {
+          'x-byo-cdn-type': 'akamai',
+          'x-push-invalidation': 'enabled',
+        },
+      },
+      config: {
+        inlineNav: true,
+        inlineFooter: true,
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/nav/nav.plain.html'] = new Response(getFixture('inline-both', 'nav'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'surrogate-key': 'foo sk1', // fastly
+        'edge-cache-tag': 'bar,ect1', // akamai
+        'cache-tag': 'baz,ec1', // cloudflare
+      },
+    });
+    mockResponses['https://main--helix-website--adobe.aem.live/footer/footer.plain.html'] = new Response(getFixture('inline-both', 'footer'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'surrogate-key': 'sk1 sk2', // fastly
+        'edge-cache-tag': 'ect1,ect2', // akamai
+        'cache-tag': 'ec1,ec2', // cloudflare
+      },
+    });
+
+    const response = new Response(getFixture('inline-both', 'initial'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'surrogate-key': 'foo foo2', // fastly
+        'edge-cache-tag': 'bar,bar2', // akamai
+        'cache-tag': 'baz,baz2', // cloudflare
+      },
+    });
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    const body = await result.text();
+    assert.strictEqual(result.status, 200);
+    assert.strictEqual(fetchCalls, 2);
+    assert.strictEqual(body, getFixture('inline-both', 'expected'));
+    assert.strictEqual(result.headers.get('surrogate-key'), 'foo foo2 sk1 sk2');
+    assert.strictEqual(result.headers.get('edge-cache-tag'), 'bar,bar2,ect1,ect2');
+    assert.strictEqual(result.headers.get('cache-tag'), 'baz,baz2,ec1,ec2');
+  });
 });
