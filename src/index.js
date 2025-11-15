@@ -78,7 +78,7 @@ export async function makeContext(ectx, req, env) {
  */
 export async function main(request, context = {}) {
   const { pathname } = new URL(request.url);
-  if (request.method === 'GET' && pathname && pathname.startsWith('.well-known/acme-challenge/')) {
+  if (request.method === 'GET' && pathname && pathname.startsWith('/.well-known/acme-challenge/')) {
     return acmeChallenge(request, context);
   }
   const env = context.env || {};
