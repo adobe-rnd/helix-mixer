@@ -35,6 +35,7 @@ jobs:
       - run: npm ci
       - name: Deploy via helix-deploy (CI)
         env:
+          LETSENCRYPT_ACCOUNT_THUMBPRINT: ${{ secrets.LETSENCRYPT_ACCOUNT_THUMBPRINT }}
           HLX_FASTLY_ID: ${{ secrets.HLX_FASTLY_CI_ID }}
           HLX_FASTLY_AUTH: ${{ secrets.HLX_FASTLY_CI_AUTH }}
           HLX_CLOUDFLARE_EMAIL: ${{ secrets.HLX_CLOUDFLARE_EMAIL }}
@@ -62,6 +63,7 @@ jobs:
       - name: Semantic Release
         run: npm run semantic-release
         env:
+          LETSENCRYPT_ACCOUNT_THUMBPRINT: ${{ secrets.LETSENCRYPT_ACCOUNT_THUMBPRINT }}
           POST_DEPLOY_SITE_NAME: ${{ secrets.POST_DEPLOY_SITE_NAME }}
           GITHUB_TOKEN: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # CI (prepare) deployment env
