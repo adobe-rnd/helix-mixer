@@ -17,7 +17,7 @@
   */
 export async function acmeChallenge(request, context) {
   const { pathname } = new URL(request.url);
-  const token = pathname.slice('.well-known/acme-challenge/'.length);
+  const token = pathname.replace(/^\/?\.well-known\/acme-challenge\//, '');
   const thumbprint = await context.env.LETSENCRYPT_ACCOUNT_THUMBPRINT;
   return new Response(`${token}.${thumbprint}`, { headers: { 'Content-Type': 'text/plain' } });
 }

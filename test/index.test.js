@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert';
-import { makeContext } from '../src/index.js';
+import { main, makeContext } from '../src/index.js';
 
 describe('index tests', () => {
   describe('makeContext', () => {
@@ -92,6 +92,25 @@ describe('index tests', () => {
 
       assert.strictEqual(ctx.url.host, 'app.aem-mesh.live');
       assert.strictEqual(ctx.info.subdomain, 'app');
+    });
+  });
+
+  describe('main', () => {
+    it('handles ACME challenge requests directly', async () => {
+      const token = 'test-token';
+      const request = new Request(`https://example.com/.well-known/acme-challenge/${token}`);
+      const context = {
+        env: {
+          LETSENCRYPT_ACCOUNT_THUMBPRINT: 'thumbprint',
+        },
+      };
+
+      const response = await main(request, context);
+      const body = await response.text();
+
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(response.headers.get('content-type'), 'text/plain');
+      assert.strictEqual(body, `${token}.thumbprint`);
     });
   });
 });

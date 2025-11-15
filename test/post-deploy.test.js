@@ -88,6 +88,19 @@ providers
         assert.strictEqual(res.status, 200, await res.text());
       }).timeout(4000);
 
+      it('returns ACME challenge response with token and thumbprint', async () => {
+        const challengeToken = 'post-deploy-token';
+        const { url, ...opts } = getFetchOptions(`/.well-known/acme-challenge/${challengeToken}`, 'main', 'helix-website', 'adobe');
+        const res = await fetch(url, opts);
+        const body = await res.text();
+
+        assert.strictEqual(res.status, 200, body);
+        assert.strictEqual(res.headers.get('content-type'), 'text/plain');
+        assert.ok(body.startsWith(`${challengeToken}.`), `Expected body to start with "${challengeToken}." but got "${body}"`);
+        const thumbprint = body.slice(challengeToken.length + 1);
+        assert.ok(thumbprint.length > 0, 'Expected thumbprint to be present in ACME challenge response');
+      }).timeout(4000);
+
       Object.entries(prodPaths).forEach(([path, result]) => {
         it(`returns ${result.status} for ${path}`, async () => {
           const { url, ...opts } = getFetchOptions(path, 'main', name, 'aemsites');
