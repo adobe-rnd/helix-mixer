@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { acmeChallenge } from './acme.js';
 import { resolveConfig } from './config.js';
 import { resolveCustomDomain } from './dns.js';
 import handler from './handler.js';
@@ -76,6 +77,10 @@ export async function makeContext(ectx, req, env) {
  * @param {object} context
  */
 export async function main(request, context = {}) {
+  const { pathname } = new URL(request.url);
+  if (request.method === 'GET' && pathname && pathname.startsWith('.well-known/acme-challenge/')) {
+    return acmeChallenge(request, context);
+  }
   const env = context.env || {};
   const pctx = context.executionContext || {};
   const ctx = await makeContext(pctx, request, env);
