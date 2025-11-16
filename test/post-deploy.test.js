@@ -99,6 +99,7 @@ providers
         assert.ok(body.startsWith(`${challengeToken}.`), `Expected body to start with "${challengeToken}." but got "${body}"`);
         const thumbprint = body.slice(challengeToken.length + 1);
         assert.ok(thumbprint.length > 0, 'Expected thumbprint to be present in ACME challenge response');
+        assert.ok(!thumbprint.match(/null|undefined/), `Expected thumbprint to not be null or undefined but got "${thumbprint}"`);
       }).timeout(4000);
 
       Object.entries(prodPaths).forEach(([path, result]) => {
