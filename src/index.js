@@ -77,16 +77,18 @@ export async function makeContext(ectx, req, env) {
  * @param {object} context
  */
 export async function main(request, context = {}) {
-  const { pathname } = new URL(request.url);
-  context.log.info('[main] Received request:', request.method, request.url);
-  context.log.info('[main] Pathname:', pathname);
-  if (request.method === 'GET' && pathname && pathname.startsWith('/.well-known/acme-challenge/')) {
-    context.log.info('[main] Routing to ACME challenge handler');
-    return acmeChallenge(request, context);
-  }
   const env = context.env || {};
   const pctx = context.executionContext || {};
   const ctx = await makeContext(pctx, request, env);
+
+  const { pathname } = new URL(request.url);
+  ctx.log.info('[main] Received request:', request.method, request.url);
+  ctx.log.info('[main] Pathname:', pathname);
+  if (request.method === 'GET' && pathname && pathname.startsWith('/.well-known/acme-challenge/')) {
+    ctx.log.info('[main] Routing to ACME challenge handler');
+    return acmeChallenge(request, context);
+  }
+
   try {
     const overrides = Object.fromEntries(ctx.url.searchParams.entries());
     const config = await resolveConfig(ctx, overrides);
