@@ -16,7 +16,7 @@ ENVIRONMENT = "dev"
 # ci environment
 
 [env.ci]
-name = "helix-mixer-ci"
+name = "helix3--helix-mixer-ci"
 
 [env.ci.vars]
 VERSION = "@@VERSION@@-ci"
