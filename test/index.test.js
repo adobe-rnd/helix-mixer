@@ -103,6 +103,11 @@ describe('index tests', () => {
         env: {
           LETSENCRYPT_ACCOUNT_THUMBPRINT: 'thumbprint',
         },
+        log: {
+          info: () => {},
+          debug: () => {},
+          error: () => {},
+        },
       };
 
       const response = await main(request, context);
