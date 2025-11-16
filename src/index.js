@@ -106,10 +106,3 @@ export async function main(request, context = {}) {
     return errorResponse(500, 'internal server error');
   }
 }
-
-// Cloudflare Worker runtime support (local dev, wrangler)
-export default {
-  async fetch(request, env, pctx) {
-    return main(request, { env, executionContext: pctx });
-  },
-};

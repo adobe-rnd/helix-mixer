@@ -42,14 +42,14 @@ export async function resolveConfig(ctx, overrides = {}) {
   let ref;
   let site;
   let org;
-  if (ctx.env.DEV === 'true') {
+  if (await ctx.env.DEV === 'true') {
     ref = ctx.env.REF;
     site = ctx.env.SITE;
     org = ctx.env.ORG;
   } else {
     ([ref, site, org] = ctx.info.subdomain.split('--'));
   }
-  log.debug('rso: ', ref, site, org, ctx.env.DEV);
+  log.debug('rso: ', ref, site, org, await ctx.env.DEV);
   if (!org) {
     throw errorWithResponse(404, 'missing org');
   }
