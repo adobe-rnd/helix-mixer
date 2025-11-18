@@ -84,7 +84,7 @@ export async function main(request, context = {}) {
   const { pathname } = new URL(request.url);
   ctx.log.info('[main] Received request:', request.method, request.url);
   ctx.log.info('[main] Pathname:', pathname);
-  if (request.method === 'GET' && pathname && pathname.startsWith('/.well-known/acme-challenge/')) {
+  if (request.method === 'GET' && pathname.startsWith('/.well-known/acme-challenge/')) {
     ctx.log.info('[main] Routing to ACME challenge handler');
     return acmeChallenge(request, context);
   }
