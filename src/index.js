@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { acmeChallenge } from './acme.js';
 import { resolveConfig } from './config.js';
 import { resolveCustomDomain } from './dns.js';
 import handler from './handler.js';
@@ -79,6 +80,13 @@ export async function main(request, context = {}) {
   const env = context.env || {};
   const pctx = context.executionContext || {};
   const ctx = await makeContext(pctx, request, env);
+
+  const { pathname } = new URL(request.url);
+  if (request.method === 'GET' && pathname.startsWith('/.well-known/acme-challenge/')) {
+    ctx.log.info('[main] Routing to ACME challenge handler');
+    return acmeChallenge(request, context);
+  }
+
   try {
     const overrides = Object.fromEntries(ctx.url.searchParams.entries());
     const config = await resolveConfig(ctx, overrides);
@@ -98,10 +106,3 @@ export async function main(request, context = {}) {
     return errorResponse(500, 'internal server error');
   }
 }
-
-// Cloudflare Worker runtime support (local dev, wrangler)
-export default {
-  async fetch(request, env, pctx) {
-    return main(request, { env, executionContext: pctx });
-  },
-};
