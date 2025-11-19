@@ -10,7 +10,6 @@
  * governing permissions and limitations under the License.
  */
 /**
-  *
   * @param {Request} request HTTP request (from fetch)
   * @param {Context} context context
   * @returns {Promise<Response>}
@@ -19,5 +18,8 @@ export async function acmeChallenge(request, context) {
   const { pathname } = new URL(request.url);
   const token = pathname.replace(/^\/?\.well-known\/acme-challenge\//, '');
   const thumbprint = await context.env.LETSENCRYPT_ACCOUNT_THUMBPRINT;
-  return new Response(`${token}.${thumbprint}`, { headers: { 'Content-Type': 'text/plain' } });
+  if (!thumbprint) {
+    return new Response('ACME challenge misconfigured', { status: 500 });
+  }
+  return new Response(`${token}.${thumbprint}`, { headers: { 'content-type': 'text/plain' } });
 }
