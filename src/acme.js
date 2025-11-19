@@ -10,7 +10,6 @@
  * governing permissions and limitations under the License.
  */
 /**
-  *
   * @param {Request} request HTTP request (from fetch)
   * @param {Context} context context
   * @returns {Promise<Response>}
