@@ -71,6 +71,19 @@ export default async function handler(ctx) {
 
   beresp = await inlineResources(ctx, beurl, beresp);
 
+  // strip cf-cache-status and combine cache-tag and x-cache-tag
+  const headers = new Headers(beresp.headers);
+  headers.delete('cf-cache-status');
+  const cfCacheTags = new Set([
+    ...(headers.get('cache-tag')?.split(',') || []),
+    ...(headers.get('x-cache-tag')?.split(',') || []),
+  ]);
+  if (cfCacheTags.size) {
+    const cacheTag = [...cfCacheTags].join(',');
+    beresp.headers.set('cache-tag', cacheTag);
+    beresp.headers.set('x-cache-tag', cacheTag); // forward for debugging
+  }
+
   return new Response(beresp.body, {
     status: beresp.status,
     headers: {

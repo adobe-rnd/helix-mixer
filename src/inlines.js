@@ -209,6 +209,8 @@ export default async function inlineResources(ctx, beurl, response) {
     'edge-cache-tag': new Set(response.headers.get('edge-cache-tag')?.split(',') || []),
     // cloudflare
     'cache-tag': new Set(response.headers.get('cache-tag')?.split(',') || []),
+    // cache-tag headers may be stripped by cloudflare, collect x-cache-tag as well
+    'x-cache-tag': new Set(response.headers.get('x-cache-tag')?.split(',') || []),
   };
   markup = await inlineTag(ctx, markup, cacheKeys, meta.nav, 'header');
   markup = await inlineTag(ctx, markup, cacheKeys, meta.footer, 'footer');
