@@ -72,7 +72,7 @@ export default async function handler(ctx) {
   beresp = await inlineResources(ctx, beurl, beresp);
 
   // strip cf-cache-status and combine cache-tag and x-cache-tag
-  const headers = new Headers(Object.fromEntries(beresp.headers.entries()));
+  const headers = new Headers(beresp.headers);
   headers.delete('cf-cache-status');
   const cfCacheTags = new Set([
     ...(headers.get('cache-tag')?.split(',') || []),

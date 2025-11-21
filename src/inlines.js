@@ -188,7 +188,7 @@ export default async function inlineResources(ctx, beurl, response) {
   if (!meta.nav && !meta.footer) {
     const compressionHint = getCompressionHint(ctx);
     // Remove content-encoding since we decompressed the response
-    const headers = new Headers(Object.fromEntries(response.headers.entries()));
+    const headers = new Headers(response.headers);
     headers.delete('content-encoding');
     headers.delete('content-length');
     if (compressionHint) {
@@ -198,7 +198,7 @@ export default async function inlineResources(ctx, beurl, response) {
     // Return uncompressed markup - CDN will handle compression via x-compress-hint
     return new Response(markup, {
       status: response.status,
-      headers: Object.fromEntries(headers.entries()),
+      headers,
     });
   }
 
@@ -234,7 +234,7 @@ export default async function inlineResources(ctx, beurl, response) {
 
   const compressionHint = getCompressionHint(ctx);
   // Remove content-encoding since we decompressed the response
-  const headers = new Headers(Object.fromEntries(response.headers.entries()));
+  const headers = new Headers(response.headers);
   headers.delete('content-encoding');
   headers.delete('content-length');
   if (compressionHint) {
@@ -249,6 +249,6 @@ export default async function inlineResources(ctx, beurl, response) {
   // Return uncompressed markup - CDN will handle compression via x-compress-hint
   return new Response(markup, {
     status: response.status,
-    headers: Object.fromEntries(headers.entries()),
+    headers,
   });
 }
