@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+// @ts-nocheck
+
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -297,5 +299,47 @@ describe('inlines tests', () => {
     assert.strictEqual(result.headers.get('surrogate-key'), 'foo foo2 sk1 sk2');
     assert.strictEqual(result.headers.get('edge-cache-tag'), 'bar,bar2,ect1,ect2');
     assert.strictEqual(result.headers.get('cache-tag'), 'baz,baz2,ec1,ec2');
+  });
+
+  it('should combine x-cache-tag from subresources into both cache-tag and x-cache-tag', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineNav: true,
+        inlineFooter: true,
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    // Subresources only return x-cache-tag (no cache-tag)
+    mockResponses['https://main--helix-website--adobe.aem.live/nav/nav.plain.html'] = new Response(getFixture('inline-both', 'nav'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-cache-tag': 'xn1,xn2',
+      },
+    });
+    mockResponses['https://main--helix-website--adobe.aem.live/footer/footer.plain.html'] = new Response(getFixture('inline-both', 'footer'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-cache-tag': 'xf1,xf2',
+      },
+    });
+
+    // Initial response has no cache-tag/x-cache-tag
+    const response = new Response(getFixture('inline-both', 'initial'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+      },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    const body = await result.text();
+    assert.strictEqual(result.status, 200);
+    assert.strictEqual(body, getFixture('inline-both', 'expected'));
+    // Both headers should contain the union of x-cache-tag values from subresources
+    assert.strictEqual(result.headers.get('x-cache-tag'), 'xn1,xn2,xf1,xf2');
+    assert.strictEqual(result.headers.get('cache-tag'), 'xn1,xn2,xf1,xf2');
   });
 });

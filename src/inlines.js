@@ -151,8 +151,8 @@ export function inlineConfigured(ctx) {
  *
  * @param {Context} ctx
  * @param {URL} beurl
- * @param {import('@cloudflare/workers-types').Response} response
- * @returns {Promise<import('@cloudflare/workers-types').Response>}
+ * @param {Response} response
+ * @returns {Promise<Response>}
  */
 export default async function inlineResources(ctx, beurl, response) {
   const { info } = ctx;
@@ -209,11 +209,21 @@ export default async function inlineResources(ctx, beurl, response) {
     'edge-cache-tag': new Set(response.headers.get('edge-cache-tag')?.split(',') || []),
     // cloudflare
     'cache-tag': new Set(response.headers.get('cache-tag')?.split(',') || []),
+    // cache-tag headers may be stripped by cloudflare, collect x-cache-tag as well
+    'x-cache-tag': new Set(response.headers.get('x-cache-tag')?.split(',') || []),
   };
   markup = await inlineTag(ctx, markup, cacheKeys, meta.nav, 'header');
   markup = await inlineTag(ctx, markup, cacheKeys, meta.footer, 'footer');
 
   // rebuild the response with the updated markup and cache keys
+  // Combine cloudflare cache tags across both headers so both contain the union
+  const cfUnion = new Set([
+    ...cacheKeys['cache-tag'],
+    ...cacheKeys['x-cache-tag'],
+  ]);
+  cacheKeys['cache-tag'] = cfUnion;
+  cacheKeys['x-cache-tag'] = cfUnion;
+
   const cacheHeaders = {};
   for (const [key, value] of Object.entries(cacheKeys)) {
     const strValue = [...value].join(key === 'surrogate-key' ? ' ' : ',').trim();
