@@ -151,8 +151,8 @@ export function inlineConfigured(ctx) {
  *
  * @param {Context} ctx
  * @param {URL} beurl
- * @param {import('@cloudflare/workers-types').Response} response
- * @returns {Promise<import('@cloudflare/workers-types').Response>}
+ * @param {Response} response
+ * @returns {Promise<Response>}
  */
 export default async function inlineResources(ctx, beurl, response) {
   const { info } = ctx;
@@ -188,7 +188,7 @@ export default async function inlineResources(ctx, beurl, response) {
   if (!meta.nav && !meta.footer) {
     const compressionHint = getCompressionHint(ctx);
     // Remove content-encoding since we decompressed the response
-    const headers = new Headers(response.headers);
+    const headers = new Headers(Object.fromEntries(response.headers.entries()));
     headers.delete('content-encoding');
     headers.delete('content-length');
     if (compressionHint) {
@@ -198,7 +198,7 @@ export default async function inlineResources(ctx, beurl, response) {
     // Return uncompressed markup - CDN will handle compression via x-compress-hint
     return new Response(markup, {
       status: response.status,
-      headers,
+      headers: Object.fromEntries(headers.entries()),
     });
   }
 
@@ -216,6 +216,14 @@ export default async function inlineResources(ctx, beurl, response) {
   markup = await inlineTag(ctx, markup, cacheKeys, meta.footer, 'footer');
 
   // rebuild the response with the updated markup and cache keys
+  // Combine cloudflare cache tags across both headers so both contain the union
+  const cfUnion = new Set([
+    ...cacheKeys['cache-tag'],
+    ...cacheKeys['x-cache-tag'],
+  ]);
+  cacheKeys['cache-tag'] = cfUnion;
+  cacheKeys['x-cache-tag'] = cfUnion;
+
   const cacheHeaders = {};
   for (const [key, value] of Object.entries(cacheKeys)) {
     const strValue = [...value].join(key === 'surrogate-key' ? ' ' : ',').trim();
@@ -226,7 +234,7 @@ export default async function inlineResources(ctx, beurl, response) {
 
   const compressionHint = getCompressionHint(ctx);
   // Remove content-encoding since we decompressed the response
-  const headers = new Headers(response.headers);
+  const headers = new Headers(Object.fromEntries(response.headers.entries()));
   headers.delete('content-encoding');
   headers.delete('content-length');
   if (compressionHint) {
@@ -241,6 +249,6 @@ export default async function inlineResources(ctx, beurl, response) {
   // Return uncompressed markup - CDN will handle compression via x-compress-hint
   return new Response(markup, {
     status: response.status,
-    headers,
+    headers: Object.fromEntries(headers.entries()),
   });
 }
