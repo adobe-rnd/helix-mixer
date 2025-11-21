@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.1...v1.4.2) (2025-11-21)
+
+
+### Bug Fixes
+
+* combine cache-tag and x-cache-tag headers ([#39](https://github.com/adobe-rnd/helix-mixer/issues/39)) ([1b5f594](https://github.com/adobe-rnd/helix-mixer/commit/1b5f5943efbc150c12a41fc82efb6d6ddf4bc170))
+
 ## [1.4.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.0...v1.4.1) (2025-11-14)
 
 
