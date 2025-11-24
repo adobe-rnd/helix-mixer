@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.2...v1.5.0) (2025-11-24)
+
+
+### Features
+
+* Support http-01 challenge for ACME Certificate Validation ([7952fbd](https://github.com/adobe-rnd/helix-mixer/commit/7952fbd5a4c5492c4ac58c2b633a90e40548fe8a)), closes [#36](https://github.com/adobe-rnd/helix-mixer/issues/36)
+
 ## [1.4.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.1...v1.4.2) (2025-11-21)
 
 
