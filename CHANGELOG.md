@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.5.0...v1.5.1) (2025-12-05)
+
+
+### Bug Fixes
+
+* remove impl param from ffetch, log on fatal error ([#40](https://github.com/adobe-rnd/helix-mixer/issues/40)) ([9d0b3bb](https://github.com/adobe-rnd/helix-mixer/commit/9d0b3bb664bf7ac4a4a7bdf636ce423abf2232ce))
+
 # [1.5.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.4.2...v1.5.0) (2025-11-24)
 
 
