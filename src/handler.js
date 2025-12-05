@@ -27,13 +27,6 @@ export default async function handler(ctx) {
   );
   const isPipelineReq = beurl.origin === 'https://pipeline-cloudflare.adobecommerce.live';
 
-  /** @type {import('@cloudflare/workers-types').Fetcher} */
-  let impl;
-  if (origin.endsWith('.magento.cloud')) {
-    // @ts-ignore
-    impl = ctx.CERT[config.siteKey];
-    ctx.log.info(`${impl ? '' : 'not '}using mTLS fetcher for ${origin} (${config.siteKey})`);
-  }
   ctx.log.debug('fetching: ', beurl);
 
   const fetchHeaders = {
@@ -51,7 +44,7 @@ export default async function handler(ctx) {
 
   ctx.log.debug('Fetching with headers:', fetchHeaders);
 
-  let beresp = await ffetch(impl)(beurl.toString(), {
+  let beresp = await ffetch(beurl.toString(), {
     method: ctx.info.method,
     body: ctx.info.body,
     redirect: 'manual',

@@ -68,7 +68,7 @@ export async function resolveConfig(ctx, overrides = {}) {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
     const configUrl = `https://${siteKey}.aem.live/config.json`;
-    const res = await ffetch()(configUrl);
+    const res = await ffetch(configUrl);
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
