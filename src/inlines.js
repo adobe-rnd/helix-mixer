@@ -78,7 +78,7 @@ async function inlineTag(ctx, markup, cacheKeys, path, tag) {
 
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
   const url = new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`);
-  const tagResponse = await ffetch()(url.toString(), {
+  const tagResponse = await ffetch(url.toString(), {
     headers: {
       'x-byo-cdn-type': ctx.info.headers['x-byo-cdn-type'],
       'x-push-invalidation': ctx.info.headers['x-push-invalidation'],

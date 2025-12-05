@@ -11,24 +11,21 @@
  */
 
 /**
- * @param {import('@cloudflare/workers-types').Fetcher} [impl] - fetch implementation to use
- * @returns {(
+ * @type {(
  *  url: string,
  *  init?: import("@cloudflare/workers-types").RequestInit
  * ) => Promise<import("@cloudflare/workers-types").Response>}
  */
-export const ffetch = (impl) => async (url, init) => {
-  /** @type {import("@cloudflare/workers-types").Fetcher['fetch']} */
+export const ffetch = async (url, init) => {
   // @ts-ignore
-  const { fetch } = impl || globalThis;
-  // @ts-ignore
-  const resp = await fetch.call(impl, url, init);
+  const resp = await fetch(url, init);
   console.debug({
     url,
     status: resp.status,
     statusText: resp.statusText,
     headers: Object.fromEntries(resp.headers),
   });
+  // @ts-ignore
   return resp;
 };
 
