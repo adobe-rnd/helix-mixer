@@ -102,7 +102,7 @@ export async function main(request, context = {}) {
     if (e.response) {
       return e.response;
     }
-    ctx.log.error(e);
+    ctx.log.error(e, e.stack);
     return errorResponse(500, 'internal server error');
   }
 }
