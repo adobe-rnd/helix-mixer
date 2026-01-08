@@ -109,12 +109,28 @@ export async function resolveConfig(ctx, overrides = {}) {
   }
 
   const { patterns, backends } = rawConfig;
-  const pattern = findGlobMatch(
-    Object.keys(patterns).filter((p) => p !== 'default'),
-    ctx.url.pathname,
-  );
 
-  const backendKey = patterns[pattern] ?? patterns.default ?? 'default';
+  let pattern;
+  let backendKey;
+
+  // Check if path contains /content-images/media_ route directly to aem.live
+  if (ctx.url.pathname.includes('/content-images/media_')) {
+    pattern = '**/content-images/media_*';
+    backendKey = '__adobe_edge_content_images';
+    // Ensure backend exists for content images
+    if (!backends[backendKey]) {
+      backends[backendKey] = {
+        origin: `${siteKey}.aem.live`,
+      };
+    }
+  } else {
+    pattern = findGlobMatch(
+      Object.keys(patterns).filter((p) => p !== 'default'),
+      ctx.url.pathname,
+    );
+    backendKey = patterns[pattern] ?? patterns.default ?? 'default';
+  }
+
   if (!backends[backendKey]) {
     // fallback to .aem.live
     backends[backendKey] = {

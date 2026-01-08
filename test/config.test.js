@@ -624,4 +624,25 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.strictEqual(config.pathname, '/base/path/test');
     });
   });
+
+  describe('Content Images Routing', () => {
+    it('should automatically route content-images/media_ to aem.live', async () => {
+      const ctx = createMockContext('main--site--org', '/en/services/content-images/media_165855a22ff2f69475d72b51b008b10ba21f73364.avif');
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.pattern, '**/content-images/media_*');
+      assert.strictEqual(config.origin, 'main--site--org.aem.live');
+      // The pathname should remain unchanged with /content-images/ in it
+      assert.strictEqual(config.pathname, '/en/services/content-images/media_165855a22ff2f69475d72b51b008b10ba21f73364.avif');
+    });
+
+    it('should handle content-images in nested paths', async () => {
+      const ctx = createMockContext('main--site--org', '/path/to/product/content-images/media_abc123.jpg');
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.pattern, '**/content-images/media_*');
+      assert.strictEqual(config.origin, 'main--site--org.aem.live');
+      assert.strictEqual(config.pathname, '/path/to/product/content-images/media_abc123.jpg');
+    });
+  });
 });
