@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.5.1...v1.6.0) (2026-01-09)
+
+
+### Features
+
+* route /content-images/media_* requests to aem.live ([#42](https://github.com/adobe-rnd/helix-mixer/issues/42)) ([5e8e5fe](https://github.com/adobe-rnd/helix-mixer/commit/5e8e5fe0c7d59f849b2643249fd9a91eca04cc30))
+
 ## [1.5.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.5.0...v1.5.1) (2025-12-05)
 
 
