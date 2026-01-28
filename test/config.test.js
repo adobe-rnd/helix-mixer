@@ -193,15 +193,21 @@ const mockConfigs = {
 // Setup mock fetch function
 function setupMockFetch() {
   globalThis.fetch = async (url) => {
-    const siteKey = url.replace('https://', '').replace('.aem.live/config.json', '');
-    const config = mockConfigs[siteKey];
-    if (config) {
-      return {
-        ok: true,
-        status: 200,
-        headers: new Map([['content-type', 'application/json']]),
-        json: async () => config,
-      };
+    // Parse config service URL: https://config.aem.page/main--{site}--{org}/config.json?scope=public
+    const match = url.match(/config\.aem\.page\/main--([^/]+)--([^/]+)\/config\.json/);
+    if (match) {
+      const [, site, org] = match;
+      // Find config that matches site--org (any ref)
+      const configKey = Object.keys(mockConfigs).find((key) => key.endsWith(`--${site}--${org}`));
+      const config = configKey ? mockConfigs[configKey] : null;
+      if (config) {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Map([['content-type', 'application/json']]),
+          json: async () => config,
+        };
+      }
     }
     return {
       ok: false,
@@ -222,6 +228,7 @@ function createMockContext(subdomain, pathname, env = {}) {
     },
     env: {
       DEV: 'false',
+      HLX_CONFIG_SERVICE_TOKEN: 'test-token',
       ...env,
     },
     log: {
@@ -401,14 +408,14 @@ describe('Configuration Pattern Tests with Code Execution', () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle missing configuration gracefully', async () => {
-      const ctx = createMockContext('nonexistent--site--org', '/test');
+      const ctx = createMockContext('main--notfound--notfound', '/test');
       const config = await resolveConfig(ctx);
 
       // Should get a minimal config with fallback backend
       assert.ok(config);
       assert.strictEqual(config.pattern, undefined);
       // Fallback origin doesn't have https:// prefix
-      assert.strictEqual(config.origin, 'nonexistent--site--org.aem.live');
+      assert.strictEqual(config.origin, 'main--notfound--notfound.aem.live');
     });
 
     it('should throw error for missing org', async () => {
