@@ -34,15 +34,15 @@ declare global {
   }
 
   export interface Env {
-    VERSION: string;
-    ENVIRONMENT: string;
-    DEV: string | undefined;
-    PRODUCT_PIPELINE_TOKEN: string;
+    VERSION: Promise<string>;
+    ENVIRONMENT: Promise<string>;
+    DEV: Promise<string | undefined>;
+    PRODUCT_PIPELINE_TOKEN: Promise<string>;
 
     // KV namespaces
     CONFIGS: KVNamespace<string>;
 
-    [key: string]: string | KVNamespace<string> | R2Bucket;
+    [key: string]: Promise<string> | KVNamespace<string> | R2Bucket;
   }
 
   export interface Context {

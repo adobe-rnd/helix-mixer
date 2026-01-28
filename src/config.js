@@ -67,8 +67,14 @@ export async function resolveConfig(ctx, overrides = {}) {
   if (SOURCE === 'STORAGE') {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
-    const configUrl = `https://${siteKey}.aem.live/config.json`;
-    const res = await ffetch(configUrl);
+    const configUrl = `https://config.aem.page/main--${site}--${org}/config.json?scope=public`;
+    const res = await ffetch(configUrl, {
+      headers: {
+        'cache-control': 'no-cache',
+        'x-access-token': await ctx.env.HLX_CONFIG_SERVICE_TOKEN,
+        'x-backend-type': 'cloudflare',
+      },
+    });
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
