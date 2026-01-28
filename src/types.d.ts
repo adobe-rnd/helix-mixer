@@ -42,7 +42,7 @@ declare global {
     // KV namespaces
     CONFIGS: KVNamespace<string>;
 
-    [key: string]: string | KVNamespace<string> | R2Bucket;
+    [key: string]: Promise<string> | KVNamespace<string> | R2Bucket;
   }
 
   export interface Context {

@@ -71,8 +71,8 @@ export async function resolveConfig(ctx, overrides = {}) {
     const res = await ffetch(configUrl, {
       headers: {
         'cache-control': 'no-cache',
-        'x-access-token': ctx.env.HLX_CONFIG_SERVICE_TOKEN,
-        'x-backend-type': 'aws',
+        'x-access-token': await ctx.env.HLX_CONFIG_SERVICE_TOKEN,
+        'x-backend-type': 'cloudflare',
       },
     });
     if (!res.ok) {
