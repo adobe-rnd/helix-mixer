@@ -36,7 +36,7 @@ declare global {
   export interface Env {
     VERSION: Promise<string>;
     ENVIRONMENT: Promise<string>;
-    DEV: string | undefined;
+    DEV: Promise<string | undefined>;
     PRODUCT_PIPELINE_TOKEN: string;
 
     // KV namespaces
