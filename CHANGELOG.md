@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.6.0...v1.6.1) (2026-01-28)
+
+
+### Bug Fixes
+
+* use config service ([#43](https://github.com/adobe-rnd/helix-mixer/issues/43)) ([540a5ba](https://github.com/adobe-rnd/helix-mixer/commit/540a5ba476012963b0f596c9ec6e01ea60ca89aa))
+
 # [1.6.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.5.1...v1.6.0) (2026-01-09)
 
 
