@@ -35,7 +35,7 @@ declare global {
 
   export interface Env {
     VERSION: Promise<string>;
-    ENVIRONMENT: string;
+    ENVIRONMENT: Promise<string>;
     DEV: string | undefined;
     PRODUCT_PIPELINE_TOKEN: string;
 
