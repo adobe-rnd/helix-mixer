@@ -37,7 +37,7 @@ declare global {
     VERSION: Promise<string>;
     ENVIRONMENT: Promise<string>;
     DEV: Promise<string | undefined>;
-    PRODUCT_PIPELINE_TOKEN: string;
+    PRODUCT_PIPELINE_TOKEN: Promise<string>;
 
     // KV namespaces
     CONFIGS: KVNamespace<string>;
