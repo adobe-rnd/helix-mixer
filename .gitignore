@@ -12,3 +12,4 @@ wrangler-versioned.toml
 *.pem
 bin/main.wasm
 pkg/helix-mixer.tar.gz
+.claude/settings.local.json

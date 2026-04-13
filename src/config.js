@@ -107,12 +107,16 @@ export async function resolveConfig(ctx, overrides = {}) {
       throw new Error('invalid config object');
     }
 
-    const { patterns, backends } = rawConfig;
+    const { patterns, backends, inlineFragments } = rawConfig;
     if (!patterns || Object.values(patterns).some((p) => typeof p !== 'string')) {
       throw new Error('invalid pattern, expected type string');
     }
     if (!backends || Object.values(backends).some((b) => typeof b.origin !== 'string')) {
       throw new Error('invalid backend, expected type string');
+    }
+    if (inlineFragments && inlineFragments.paths !== undefined
+      && (!Array.isArray(inlineFragments.paths) || inlineFragments.paths.some((path) => typeof path !== 'string'))) {
+      throw new Error('invalid inlineFragments config, expected paths array of strings');
     }
   } catch (e) {
     throw errorWithResponse(400, e.message);
