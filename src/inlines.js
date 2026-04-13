@@ -499,16 +499,13 @@ export default async function inlineResources(ctx, beurl, response) {
     return response;
   }
 
-  // get the markup - automatically handles decompression if needed.
-  // Clone first so we can fall back to .text() when the runtime already
-  // decompressed the body but left the content-encoding header (Cloudflare Workers).
+  // get the markup - automatically handles decompression if needed
   let markup;
-  const responseClone = response.clone();
   try {
     markup = await readResponseText(response, ctx);
-  } catch {
-    ctx.log.warn('Decompression failed, reading response text directly');
-    markup = await responseClone.text();
+  } catch (error) {
+    ctx.log.error('Failed to read response text:', error);
+    throw error;
   }
   const meta = extractInlineMeta(markup);
   const navPath = ctx.config.inlineNav ? meta.nav : undefined;

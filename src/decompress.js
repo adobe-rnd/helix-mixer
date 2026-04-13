@@ -69,14 +69,39 @@ export async function decompressResponse(response, ctx) {
 }
 
 /**
- * Attempts to read text from a potentially compressed response.
- * Automatically decompresses if needed.
+ * Read text from a potentially compressed response. Reads the body as an
+ * ArrayBuffer and inspects magic bytes to decide whether decompression is
+ * actually needed — some runtimes (Cloudflare Workers) transparently
+ * decompress the body but leave the content-encoding header, causing
+ * DecompressionStream to fail on already-plain bytes.
  *
  * @param {Response} response - The potentially compressed response
  * @param {object} ctx - Context object with logging
  * @returns {Promise<string>} - The decompressed text content
  */
 export async function readResponseText(response, ctx) {
-  const decompressed = await decompressResponse(response, ctx);
-  return decompressed.text();
+  const contentEncoding = response.headers.get('content-encoding');
+  if (!contentEncoding || contentEncoding === 'identity') {
+    return response.text();
+  }
+
+  const buf = await response.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+
+  const isGzip = contentEncoding === 'gzip'
+    && bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+  const isDeflate = contentEncoding === 'deflate'
+    && bytes.length >= 1 && bytes[0] === 0x78;
+
+  if (isGzip || isDeflate) {
+    const format = isGzip ? 'gzip' : 'deflate';
+    ctx.log.debug(`Decompressing ${format} response body`);
+    const stream = new Response(bytes).body.pipeThrough(
+      new DecompressionStream(format),
+    );
+    return new Response(stream).text();
+  }
+
+  ctx.log.debug('Response body already decompressed despite content-encoding header');
+  return new TextDecoder().decode(bytes);
 }
