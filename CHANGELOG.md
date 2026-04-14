@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.6.1...v1.7.0) (2026-04-14)
+
+
+### Features
+
+* inline fragments based on path prefix or #inline suffix ([#44](https://github.com/adobe-rnd/helix-mixer/issues/44)) ([89288c0](https://github.com/adobe-rnd/helix-mixer/commit/89288c0ae415a19051b7814cbae268499795082e)), closes [#inline](https://github.com/adobe-rnd/helix-mixer/issues/inline)
+
 ## [1.6.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.6.0...v1.6.1) (2026-01-28)
 
 
