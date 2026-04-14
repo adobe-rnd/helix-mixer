@@ -16,6 +16,9 @@ declare global {
     // inlines
     inlineNav?: boolean;
     inlineFooter?: boolean;
+    inlineFragments?: {
+      paths?: string[];
+    };
   }
 
   /**

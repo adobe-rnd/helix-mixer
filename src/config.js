@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { decompressResponse } from './decompress.js';
 import { errorWithResponse, ffetch, globToRegExp } from './util.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
@@ -88,7 +89,10 @@ export async function resolveConfig(ctx, overrides = {}) {
         throw errorWithResponse(res.status, 'config fetch failed');
       }
     } else {
-      const json = await res.json();
+      // Decompress before parsing — Fastly Compute doesn't auto-decompress fetch responses,
+      // so res.json() fails on gzip-encoded bodies from the config CDN.
+      const decompressed = await decompressResponse(res, { log });
+      const json = await decompressed.json();
       rawConfig = json.public?.mixerConfig ?? { patterns: {}, backends: {} };
     }
   }
@@ -103,12 +107,16 @@ export async function resolveConfig(ctx, overrides = {}) {
       throw new Error('invalid config object');
     }
 
-    const { patterns, backends } = rawConfig;
+    const { patterns, backends, inlineFragments } = rawConfig;
     if (!patterns || Object.values(patterns).some((p) => typeof p !== 'string')) {
       throw new Error('invalid pattern, expected type string');
     }
     if (!backends || Object.values(backends).some((b) => typeof b.origin !== 'string')) {
       throw new Error('invalid backend, expected type string');
+    }
+    if (inlineFragments && inlineFragments.paths !== undefined
+      && (!Array.isArray(inlineFragments.paths) || inlineFragments.paths.some((path) => typeof path !== 'string'))) {
+      throw new Error('invalid inlineFragments config, expected paths array of strings');
     }
   } catch (e) {
     throw errorWithResponse(400, e.message);

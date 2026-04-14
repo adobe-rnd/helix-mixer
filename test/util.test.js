@@ -11,7 +11,11 @@
  */
 
 import assert from 'node:assert';
-import { getEffectiveDomain, globToRegExp, isCustomDomain } from '../src/util.js';
+import {
+  getEffectiveDomain,
+  globToRegExp,
+  isCustomDomain,
+} from '../src/util.js';
 
 describe('util tests', () => {
   describe('globToRegExp', () => {

@@ -471,6 +471,36 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       delete mockConfigs['invalid--config--org'];
     });
 
+    it('should handle invalid inline config structure', async () => {
+      mockConfigs['inline-invalid--config--org'] = {
+        public: {
+          mixerConfig: {
+            patterns: { '/test': 'backend1' },
+            backends: {
+              backend1: { origin: 'example.com' },
+            },
+            inlineFragments: {
+              paths: ['/fragments/', 123],
+            },
+          },
+        },
+      };
+
+      setupMockFetch();
+
+      const ctx = createMockContext('inline-invalid--config--org', '/test');
+
+      try {
+        await resolveConfig(ctx);
+        assert.fail('Should have thrown error');
+      } catch (error) {
+        assert.strictEqual(error.response.status, 400);
+        assert.ok(error.message.includes('invalid inlineFragments config'));
+      }
+
+      delete mockConfigs['inline-invalid--config--org'];
+    });
+
     it('should handle backends with missing origin', async () => {
       // Add a separate invalid config
       mockConfigs['noorigin--config--org'] = {
@@ -528,6 +558,58 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.strictEqual(config.ref, 'feature');
       assert.strictEqual(config.site, 'devsite');
       assert.strictEqual(config.org, 'devorg');
+    });
+  });
+
+  describe('Inline Configuration', () => {
+    it('should preserve inline paths from mixerConfig', async () => {
+      mockConfigs['inline--config--org'] = {
+        public: {
+          mixerConfig: {
+            patterns: { '/test': 'backend1' },
+            backends: {
+              backend1: { origin: 'example.com' },
+            },
+            inlineFragments: {
+              paths: ['/fragments/', '/blocks/'],
+            },
+          },
+        },
+      };
+
+      setupMockFetch();
+
+      const ctx = createMockContext('inline--config--org', '/test');
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.inlineFragments, {
+        paths: ['/fragments/', '/blocks/'],
+      });
+
+      delete mockConfigs['inline--config--org'];
+    });
+
+    it('should accept inlineFragments with no paths property', async () => {
+      mockConfigs['inline-nopaths--config--org'] = {
+        public: {
+          mixerConfig: {
+            patterns: { '/test': 'backend1' },
+            backends: {
+              backend1: { origin: 'example.com' },
+            },
+            inlineFragments: {},
+          },
+        },
+      };
+
+      setupMockFetch();
+
+      const ctx = createMockContext('inline-nopaths--config--org', '/test');
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.inlineFragments, {});
+
+      delete mockConfigs['inline-nopaths--config--org'];
     });
   });
 
