@@ -53,6 +53,36 @@ describe('handler tests', () => {
     assert.strictEqual(res.headers.get('cache-tag'), 'tag-a,tag-b');
   });
 
+  it('forwards backend headers (from originOverrides) to the backend request', async () => {
+    let sentInit;
+    globalThis.fetch = async (_url, init) => {
+      sentInit = init;
+      return new Response('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      });
+    };
+
+    const ctx = TEST_CONTEXT({
+      url: new URL('https://service.example/some/path'),
+      config: {
+        protocol: 'https',
+        origin: 'backend.example',
+        pathname: '/internal',
+        inlineNav: false,
+        inlineFooter: false,
+        backend: {
+          origin: 'backend.example',
+          headers: { 'x-env': 'stage' },
+        },
+      },
+    });
+
+    const res = await handler(ctx);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(sentInit.headers['x-env'], 'stage');
+  });
+
   it('strips cf-cache-status header from backend response', async () => {
     const backendUrl = 'https://backend.example/internal';
     globalThis.fetch = async (url) => {

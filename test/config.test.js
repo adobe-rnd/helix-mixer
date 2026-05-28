@@ -162,6 +162,41 @@ const mockConfigs = {
       },
     },
   },
+  'main--storefront--exampleorg': {
+    public: {
+      mixerConfig: {
+        patterns: {
+          '/us/en_us/products/*': 'adobe_productbus',
+        },
+        backends: {
+          adobe_edge: {
+            origin: 'main--storefront--exampleorg.aem.live',
+          },
+          adobe_productbus: {
+            origin: 'pipeline-cloudflare.adobecommerce.live',
+            pathPrefix: '/exampleorg/storefront/main/',
+            originOverrides: {
+              'uat.example.com': {
+                headers: {
+                  'x-env': 'stage',
+                },
+              },
+              '*.example.com': {
+                headers: {
+                  'x-env': 'wildcard',
+                },
+              },
+              '*--storefront--exampleorg.aem.network': {
+                headers: {
+                  'x-env': 'ci',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   'main--productbus-test--maxakuru': {
     public: {
       mixerConfig: {
@@ -218,12 +253,12 @@ function setupMockFetch() {
   };
 }
 
-function createMockContext(subdomain, pathname, env = {}) {
+function createMockContext(subdomain, pathname, env = {}, headers = {}) {
   return {
     url: new URL(`https://${subdomain}.aem.network${pathname}`),
     info: {
       subdomain,
-      headers: {},
+      headers,
       method: 'GET',
     },
     env: {
@@ -711,6 +746,118 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       const config = await resolveConfig(ctx);
 
       assert.strictEqual(config.pathname, '/base/path/test');
+    });
+  });
+
+  describe('Origin Overrides', () => {
+    it('applies override headers when the incoming origin matches (x-forwarded-host)', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'uat.example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.pattern, '/us/en_us/products/*');
+      assert.strictEqual(config.origin, 'pipeline-cloudflare.adobecommerce.live');
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
+    });
+
+    it('matches the incoming origin case-insensitively', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'UAT.Example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
+    });
+
+    it('falls back to the host header when x-forwarded-host is absent', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { host: 'uat.example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
+    });
+
+    it('does not apply override headers when the incoming origin does not match', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'unrelated.other.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.backend.headers, undefined);
+    });
+
+    it('matches a single-label subdomain wildcard', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'www.example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'wildcard' });
+    });
+
+    it('matches a wildcard segment within an aem.network subdomain', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'dev-pdp--storefront--exampleorg.aem.network' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'ci' });
+    });
+
+    it('prefers the most specific (longest) matching key', async () => {
+      // 'uat.example.com' (exact) should win over '*.example.com' (wildcard)
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'uat.example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
+    });
+
+    it('does not let a single-label wildcard cross dots', async () => {
+      // '*.example.com' must not match a multi-label host
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'a.b.example.com' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.backend.headers, undefined);
+    });
+
+    it('does not apply override headers when no origin header is present', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.strictEqual(config.backend.headers, undefined);
     });
   });
 

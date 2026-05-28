@@ -14,6 +14,7 @@ import assert from 'node:assert';
 import {
   getEffectiveDomain,
   globToRegExp,
+  hostGlobToRegExp,
   isCustomDomain,
 } from '../src/util.js';
 
@@ -46,6 +47,42 @@ describe('util tests', () => {
       assert.ok(re instanceof RegExp);
       assert.ok(re.test('a/123'));
       assert.ok(!re.test('a/123/456'));
+    });
+  });
+
+  describe('hostGlobToRegExp', () => {
+    it('matches an exact hostname and escapes dots', () => {
+      const re = hostGlobToRegExp('uat.acme.com');
+      assert.ok(re.test('uat.acme.com'));
+      assert.ok(!re.test('uatxacme.com')); // dot is literal, not "any char"
+      assert.ok(!re.test('www.acme.com'));
+    });
+
+    it('matches case-insensitively', () => {
+      const re = hostGlobToRegExp('uat.acme.com');
+      assert.ok(re.test('UAT.Acme.COM'));
+    });
+
+    it('treats * as a single-label wildcard (does not cross dots)', () => {
+      const re = hostGlobToRegExp('*.acme.com');
+      assert.ok(re.test('uat.acme.com'));
+      assert.ok(re.test('www.acme.com'));
+      assert.ok(!re.test('a.b.acme.com'));
+      assert.ok(!re.test('acme.com'));
+    });
+
+    it('allows * to span a label containing dashes', () => {
+      const re = hostGlobToRegExp('*--acme--org.aem.network');
+      assert.ok(re.test('main--acme--org.aem.network'));
+      assert.ok(re.test('dev-pdp--acme--org.aem.network'));
+      assert.ok(!re.test('main--other--org.aem.network'));
+      assert.ok(!re.test('a.main--acme--org.aem.network'));
+    });
+
+    it('treats ** as a cross-label wildcard', () => {
+      const re = hostGlobToRegExp('**.acme.com');
+      assert.ok(re.test('a.b.acme.com'));
+      assert.ok(re.test('uat.acme.com'));
     });
   });
 

@@ -11,7 +11,9 @@
  */
 
 import { decompressResponse } from './decompress.js';
-import { errorWithResponse, ffetch, globToRegExp } from './util.js';
+import {
+  errorWithResponse, ffetch, globToRegExp, hostGlobToRegExp,
+} from './util.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
@@ -28,6 +30,47 @@ function findGlobMatch(patterns, path) {
       return re.test(path) ? pattern : null;
     })
     .filter(Boolean)[0];
+}
+
+/**
+ * Resolves the "origin" of the incoming request, i.e. the host the request was
+ * received on. Prefers the `x-forwarded-host` header (set by upstream proxies),
+ * falling back to the `host` header.
+ * @param {Context} ctx - The context object.
+ * @returns {string} - The lowercased incoming origin host, or '' if unknown.
+ */
+function getIncomingOrigin(ctx) {
+  const headers = ctx.info?.headers ?? {};
+  return (headers['x-forwarded-host'] || headers.host || '').toLowerCase();
+}
+
+/**
+ * Applies any matching `originOverrides` entry to the backend config in place.
+ * Keys are hostname globs (see {@link hostGlobToRegExp}) matched against the
+ * incoming request's origin host; the most specific (longest) matching key wins
+ * and is shallow-merged onto the backend, so that any backend property (currently
+ * `headers`) can be conditionally overridden.
+ * @param {Context} ctx - The context object.
+ * @param {BackendConfig} backend - The resolved backend config (mutated in place).
+ */
+function applyOriginOverrides(ctx, backend) {
+  const { originOverrides } = backend;
+  if (!originOverrides) {
+    return;
+  }
+  const incomingOrigin = getIncomingOrigin(ctx);
+  if (!incomingOrigin) {
+    return;
+  }
+  // prefer the most specific (longest) matching key, mirroring path pattern matching
+  const matchKey = Object.keys(originOverrides)
+    .sort((a, b) => b.length - a.length)
+    .find((key) => hostGlobToRegExp(key).test(incomingOrigin));
+  if (!matchKey) {
+    return;
+  }
+  ctx.log.debug(`applying originOverride for origin=${incomingOrigin} (matched ${matchKey})`);
+  Object.assign(backend, originOverrides[matchKey]);
 }
 
 /**
@@ -151,7 +194,12 @@ export async function resolveConfig(ctx, overrides = {}) {
       origin: `https://${siteKey}.aem.live`,
     };
   }
-  const backend = backends[backendKey];
+  // shallow-copy so per-request mutations (origin parsing, originOverrides) don't
+  // pollute the shared/source config object
+  const backend = { ...backends[backendKey] };
+
+  // conditionally override backend settings based on the incoming request's origin
+  applyOriginOverrides(ctx, backend);
 
   // resolve path
   // prefer the pathPrefix from backend config
