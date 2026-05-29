@@ -41,7 +41,10 @@ function findGlobMatch(patterns, path) {
  */
 function getIncomingOrigin(ctx) {
   const headers = ctx.info?.headers ?? {};
-  return (headers['x-forwarded-host'] || headers.host || '').toLowerCase();
+  // x-forwarded-host can be a comma-separated list when a request traverses
+  // multiple proxies; the first value is the original client-facing host.
+  const host = (headers['x-forwarded-host'] || headers.host || '').split(',')[0];
+  return host.trim().toLowerCase();
 }
 
 /**
