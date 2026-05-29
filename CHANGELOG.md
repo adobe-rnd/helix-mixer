@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.7.0...v1.8.0) (2026-05-29)
+
+
+### Features
+
+* origin overrides for headers in request to upstream ([#45](https://github.com/adobe-rnd/helix-mixer/issues/45)) ([f4f0bff](https://github.com/adobe-rnd/helix-mixer/commit/f4f0bfffd8b57373adfe691125e100c848b1f08b))
+
 # [1.7.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.6.1...v1.7.0) (2026-04-14)
 
 
