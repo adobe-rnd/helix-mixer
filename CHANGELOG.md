@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.0...v1.8.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* handle multiple xfh values ([#46](https://github.com/adobe-rnd/helix-mixer/issues/46)) ([6ac19ba](https://github.com/adobe-rnd/helix-mixer/commit/6ac19ba805fdf18a420af01cd2a6a091e3998930))
+
 # [1.8.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.7.0...v1.8.0) (2026-05-29)
 
 
