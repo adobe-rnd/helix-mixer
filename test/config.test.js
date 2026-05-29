@@ -764,6 +764,18 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
     });
 
+    it('uses the first value when x-forwarded-host has multiple values', async () => {
+      const ctx = createMockContext(
+        'main--storefront--exampleorg',
+        '/us/en_us/products/blender',
+        {},
+        { 'x-forwarded-host': 'uat.example.com, internal-lb.example.net' },
+      );
+      const config = await resolveConfig(ctx);
+
+      assert.deepStrictEqual(config.backend.headers, { 'x-env': 'stage' });
+    });
+
     it('matches the incoming origin case-insensitively', async () => {
       const ctx = createMockContext(
         'main--storefront--exampleorg',
