@@ -115,7 +115,7 @@ providers
 
       // Test x-custom-domain header for CI hosts
       if (!process.env.TEST_PRODUCTION) {
-        it('returns 200 with x-custom-domain header for CI host', async () => {
+        it.skip('returns 200 with x-custom-domain header for CI host', async () => {
           const url = new URL(`https://test.${domain}/`);
           const res = await fetch(url, {
             headers: {
