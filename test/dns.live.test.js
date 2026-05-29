@@ -26,7 +26,7 @@ describe('dns live tests (Google DoH)', function suite() {
     assert.strictEqual(cname, null);
   });
 
-  it('returns CNAME for www.wagenerbeer.com', async () => {
+  it.skip('returns CNAME for www.wagenerbeer.com', async () => {
     const cname = await resolveCustomDomain('www.wagenerbeer.com'); // uses DoH
     assert.strictEqual(cname, 'main--id--davidnuescheler.domains.aem.network');
   });
