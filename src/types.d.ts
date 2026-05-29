@@ -6,6 +6,12 @@ declare global {
     pathPrefix?: string;
     path?: string;
     protocol?: "http" | "https";
+    // additional headers to set on the backend request
+    headers?: Record<string, string>;
+    // per-origin overrides, keyed by the incoming request's origin (x-forwarded-host/host).
+    // The matched override is merged into the backend config, so any backend property
+    // can be overridden (currently only `headers` is used).
+    originOverrides?: Record<string, Partial<BackendConfig>>;
   }
 
   export interface RawConfig {

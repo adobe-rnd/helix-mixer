@@ -19,7 +19,9 @@ import inlineResources from './inlines.js';
  */
 export default async function handler(ctx) {
   const { config } = ctx;
-  const { protocol, origin, pathname } = config;
+  const {
+    protocol, origin, pathname, backend,
+  } = config;
 
   const beurl = new URL(
     `${pathname}${ctx.url.search}`,
@@ -40,6 +42,8 @@ export default async function handler(ctx) {
     ...(isPipelineReq ? {
       'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
     } : {}),
+    // backend-specific headers (incl. any resolved from originOverrides) win last
+    ...(backend?.headers ?? {}),
   };
 
   ctx.log.debug('Fetching with headers:', fetchHeaders);
