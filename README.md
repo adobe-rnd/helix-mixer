@@ -49,7 +49,7 @@ Configuration is fetched from `https://{ref}--{site}--{org}.aem.live/config.json
         },
         "legacy-cms-backend": {
           "origin": "legacy-blog.example.com",
-          "path": "/wp-content"
+          "pathPrefix": "/wp-content"
         },
         "main-backend": {
           "origin": "main--site--org.aem.live"
@@ -71,9 +71,19 @@ Maps URL path patterns to backend identifiers using glob syntax:
 
 #### `backends` (Required)
 Defines backend configurations:
-- `origin` (required): Target hostname or URL
+- `origin` (required): Target hostname or URL. May include a path prefix (e.g. `example.com/base`) as an alternative to `pathPrefix`.
 - `protocol` (optional): `"http"` or `"https"`, defaults to `"https"`
-- `path` (optional): Base path to prepend to forwarded requests
+- `path` (optional): Fixed path sent to the origin — the client's request path is **ignored** and replaced entirely with this value.
+- `pathPrefix` (optional): Prefix prepended to the client's request path before forwarding. Unlike `path`, the original request path is preserved and appended after the prefix.
+
+**`path` vs `pathPrefix`**
+
+| Property | Client requests `/foo/bar` | Forwarded path |
+|---|---|---|
+| `path: "/fixed"` | any path | `/fixed` |
+| `pathPrefix: "/base"` | `/foo/bar` | `/base/foo/bar` |
+
+Use `path` when the backend serves a single resource regardless of what the client requested. Use `pathPrefix` when the backend mirrors the same path hierarchy but under a different root.
 
 ### Example Routing
 
