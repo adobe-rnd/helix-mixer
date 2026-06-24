@@ -9,7 +9,7 @@ helix-mixer is part of the Adobe Helix ecosystem, providing dynamic content rout
 ## How it Works
 
 1. **Request Processing**: Incoming requests are analyzed to extract organization, site, and reference information from the subdomain
-2. **Configuration Fetching**: Service retrieves routing configuration from the AEM config service (`https://config.aem.page/main--{site}--{org}/config.json?scope=public`)
+2. **Configuration Fetching**: Service retrieves routing configuration from the AEM config service
 3. **Pattern Matching**: URL paths are matched against configured glob patterns to determine the target backend
 4. **Request Proxying**: Requests are forwarded to the matched backend with optional path transformations
 
@@ -30,7 +30,7 @@ Where:
 
 ## Configuration Format
 
-Configuration is fetched from the AEM config service at `https://config.aem.page/main--{site}--{org}/config.json?scope=public` (authenticated with `HLX_CONFIG_SERVICE_TOKEN`). The `public.mixerConfig` object holds the routing config and should be structured as follows:
+Routing configuration is fetched from the AEM config service. The `public.mixerConfig` object holds the routing config and should be structured as follows:
 
 ```json
 {
