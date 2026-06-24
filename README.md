@@ -9,7 +9,7 @@ helix-mixer is part of the Adobe Helix ecosystem, providing dynamic content rout
 ## How it Works
 
 1. **Request Processing**: Incoming requests are analyzed to extract organization, site, and reference information from the subdomain
-2. **Configuration Fetching**: Service retrieves routing configuration from `https://{ref}--{site}--{org}.aem.live/config.json`
+2. **Configuration Fetching**: Service retrieves routing configuration from the AEM config service (`https://config.aem.page/main--{site}--{org}/config.json?scope=public`)
 3. **Pattern Matching**: URL paths are matched against configured glob patterns to determine the target backend
 4. **Request Proxying**: Requests are forwarded to the matched backend with optional path transformations
 
@@ -30,7 +30,7 @@ Where:
 
 ## Configuration Format
 
-Configuration is fetched from `https://{ref}--{site}--{org}.aem.live/config.json` and should be structured as follows:
+Configuration is fetched from the AEM config service at `https://config.aem.page/main--{site}--{org}/config.json?scope=public` (authenticated with `HLX_CONFIG_SERVICE_TOKEN`). The `public.mixerConfig` object holds the routing config and should be structured as follows:
 
 ```json
 {
@@ -75,6 +75,8 @@ Defines backend configurations:
 - `protocol` (optional): `"http"` or `"https"`, defaults to `"https"`
 - `path` (optional): Fixed path sent to the origin — the client's request path is **ignored** and replaced entirely with this value.
 - `pathPrefix` (optional): Prefix prepended to the client's request path before forwarding. Unlike `path`, the original request path is preserved and appended after the prefix.
+- `headers` (optional): Object of additional request headers to send to the origin. These are applied last and override inbound headers of the same name.
+- `originOverrides` (optional): Conditionally override backend properties based on the incoming request's host. See [Origin Overrides](#origin-overrides).
 
 **`path` vs `pathPrefix`**
 
@@ -95,24 +97,48 @@ With the above configuration:
 
 ## Special Features
 
-### Magento Cloud Integration
-- Backends with origins ending in `.magento.cloud` automatically use mTLS authentication
-- Certificates are managed through Cloudflare environment variables prefixed with `CERT_`
+### Origin Overrides
+Backends may define an `originOverrides` map to conditionally override backend properties based on the **incoming** request host (the `x-forwarded-host` header, falling back to `host`):
+
+```json
+"commerce-backend": {
+  "origin": "commerce.example.com",
+  "headers": { "x-env": "default" },
+  "originOverrides": {
+    "*.staging.example.com": {
+      "headers": { "x-env": "staging" }
+    }
+  }
+}
+```
+
+- Keys are hostname globs (`*` matches within a single label, `**` matches across labels) matched case-insensitively
+- The most specific (longest) matching key wins and is shallow-merged onto the backend
+- Useful for varying upstream headers per client-facing domain without defining separate backends
 
 ### Adobe Commerce Pipeline Support
 - Requests to `pipeline-cloudflare.adobecommerce.live` receive automatic authentication
-- Adds `x-auth-token` header using `PRODUCT_PIPELINE_TOKEN` environment variable
-- Injects `x-robots-tag: noindex, nofollow` for non-forwarded hosts
+- Adds `x-auth-token` header using the `PRODUCT_PIPELINE_TOKEN` environment variable
+- Injects `x-robots-tag: noindex, nofollow` when the request has no `x-forwarded-host` header
+
+### Content Images
+- Requests whose path contains `/content-images/media_` are always routed to `{ref}--{site}--{org}.aem.live`, regardless of configured patterns
+
+### ACME / TLS Certificate Provisioning
+- `GET /.well-known/acme-challenge/{token}` is answered directly to support Let's Encrypt HTTP-01 challenges for custom domains
+- The response is `{token}.{thumbprint}`, where the thumbprint comes from the `LETSENCRYPT_ACCOUNT_THUMBPRINT` environment variable
 
 ### Fallback Behavior
-- If configuration fetch fails, service continues with empty patterns/backends
-- Missing backends automatically fallback to `{ref}--{site}--{org}.aem.live`
-- All requests are proxied with cache disabled (`cacheEverything: false`)
+- If the config fetch returns 404, the service continues with empty patterns/backends
+- Missing backends automatically fall back to `{ref}--{site}--{org}.aem.live`
+- All requests are proxied with cache disabled (`cacheEverything: false`, `cacheTtl: 0`)
+- `accept-encoding` is forced to `gzip, deflate` to prevent brotli cache poisoning
 
 ### DNS Lookup (Custom Domains)
+- Custom domains (any host not ending in a known service domain such as `.aem.network`, `.aem-mesh.live`, or `.workers.dev`) are resolved to their network origin via a CNAME lookup
 - All edge runtimes use DNS-over-HTTPS (RFC 8484) with GET requests to `/dns-query?dns=...`
-- Leverages dynamic backends to DNS providers (`dns.google`, `1.1.1.1`) for cacheability and performance
-- DNS requests race between multiple providers for optimal latency
+- DNS requests race between multiple providers (`1.1.1.1`, `dns.google`) for optimal latency
+- On CI service hosts, an `x-custom-domain` request header forces custom-domain resolution for testing
 
 ## Development
 
@@ -189,19 +215,19 @@ npm run test-postdeploy  # Run post-deployment tests against CI services
 ## Deployment
 
 ### Universal Edge (recommended)
-- Uses `@adobe/helix-deploy` with `@adobe/helix-deploy-plugin-edge` to package and deploy for both providers.
-- GitHub Actions workflows `build-edge` (for branches) and `semantic-release-edge` (for `main`) run tests, build, deploy, and execute post‑deploy tests.
+- Uses `@adobe/helix-deploy` (the `hedy` CLI) to package and deploy for both providers in one build.
+- Deploy manually with `npm run deploy:ci` or `npm run deploy:production`.
 
 Required GitHub secrets (ask maintainers for values):
-- `HLX_FASTLY_CI_ID`, `HLX_FASTLY_CI_AUTH` (for CI deployments) and `HLX_FASTLY_AUTH` (for release)
+- `HLX_FASTLY_CI_ID`, `HLX_FASTLY_CI_AUTH` (for CI deployments); `HLX_FASTLY_ID`, `HLX_FASTLY_AUTH` (for release)
 - `HLX_CLOUDFLARE_EMAIL`, `HLX_CLOUDFLARE_ACCOUNT`, `HLX_CLOUDFLARE_AUTH`
+- `LETSENCRYPT_ACCOUNT_THUMBPRINT` (for ACME challenge responses)
+- `POST_DEPLOY_SITE_NAME` (target site name for post‑deploy tests)
 
-Domains used in post‑deploy tests can be overridden via env:
-- `HLX_CLOUDFLARE_CI_DOMAIN`, `HLX_CLOUDFLARE_PROD_DOMAIN`
-- `HLX_FASTLY_CI_DOMAIN`, `HLX_FASTLY_PROD_DOMAIN`
+Post‑deploy tests run against the CI domains by default; set `TEST_PRODUCTION=true` to run them against production domains.
 
 ### CI/CD
-The unified workflow `.github/workflows/main.yaml` runs branch CI (build, deploy, post‑deploy test) and main branch releases.
+The unified workflow `.github/workflows/main.yaml` runs lint + unit tests on every push, deploys branches to CI (with post‑deploy tests), and runs semantic-release on `main`.
 
 ## License
 
