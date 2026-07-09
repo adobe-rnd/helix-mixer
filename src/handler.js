@@ -41,6 +41,7 @@ export default async function handler(ctx) {
     'accept-encoding': 'gzip, deflate',
     ...(isPipelineReq ? {
       'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
+      'x-forwarded-host': ctx.info.headers['x-forwarded-host'] || ctx.info.headers.host,
     } : {}),
     // backend-specific headers (incl. any resolved from originOverrides) win last
     ...(backend?.headers ?? {}),
