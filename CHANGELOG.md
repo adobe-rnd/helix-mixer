@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.1...v1.8.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* forward original host to pipeline backend as x-forwarded-host ([#50](https://github.com/adobe-rnd/helix-mixer/issues/50)) ([119383c](https://github.com/adobe-rnd/helix-mixer/commit/119383cc6e56dc77b499bd30abde05ff04cd2d10))
+
 ## [1.8.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.0...v1.8.1) (2026-05-29)
 
 
