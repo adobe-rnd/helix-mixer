@@ -83,6 +83,86 @@ describe('handler tests', () => {
     assert.strictEqual(sentInit.headers['x-env'], 'stage');
   });
 
+  it('forwards the original host as x-forwarded-host to the pipeline backend', async () => {
+    let sentInit;
+    globalThis.fetch = async (_url, init) => {
+      sentInit = init;
+      return new Response('ok', { status: 200, headers: { 'content-type': 'text/plain' } });
+    };
+
+    const ctx = TEST_CONTEXT({
+      url: new URL('https://main--site--org.aem.network/used/foo'),
+      info: { headers: { host: 'main--site--org.aem.network' } },
+      env: { PRODUCT_PIPELINE_TOKEN: 'tok' },
+      config: {
+        protocol: 'https',
+        origin: 'pipeline-cloudflare.adobecommerce.live',
+        pathname: '/used/foo',
+        inlineNav: false,
+        inlineFooter: false,
+      },
+    });
+
+    const res = await handler(ctx);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(sentInit.headers['x-forwarded-host'], 'main--site--org.aem.network');
+    assert.strictEqual(sentInit.headers['x-auth-token'], 'token tok');
+  });
+
+  it('preserves an existing x-forwarded-host to the pipeline backend', async () => {
+    let sentInit;
+    globalThis.fetch = async (_url, init) => {
+      sentInit = init;
+      return new Response('ok', { status: 200, headers: { 'content-type': 'text/plain' } });
+    };
+
+    const ctx = TEST_CONTEXT({
+      url: new URL('https://pipeline-cloudflare.adobecommerce.live/used/foo'),
+      info: {
+        headers: {
+          host: 'pipeline-cloudflare.adobecommerce.live',
+          'x-forwarded-host': 'www.example.com',
+        },
+      },
+      env: { PRODUCT_PIPELINE_TOKEN: 'tok' },
+      config: {
+        protocol: 'https',
+        origin: 'pipeline-cloudflare.adobecommerce.live',
+        pathname: '/used/foo',
+        inlineNav: false,
+        inlineFooter: false,
+      },
+    });
+
+    const res = await handler(ctx);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(sentInit.headers['x-forwarded-host'], 'www.example.com');
+  });
+
+  it('does not set x-forwarded-host for non-pipeline backends', async () => {
+    let sentInit;
+    globalThis.fetch = async (_url, init) => {
+      sentInit = init;
+      return new Response('ok', { status: 200, headers: { 'content-type': 'text/plain' } });
+    };
+
+    const ctx = TEST_CONTEXT({
+      url: new URL('https://service.example/some/path'),
+      info: { headers: { host: 'service.example' } },
+      config: {
+        protocol: 'https',
+        origin: 'backend.example',
+        pathname: '/internal',
+        inlineNav: false,
+        inlineFooter: false,
+      },
+    });
+
+    const res = await handler(ctx);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(sentInit.headers['x-forwarded-host'], undefined);
+  });
+
   it('strips cf-cache-status header from backend response', async () => {
     const backendUrl = 'https://backend.example/internal';
     globalThis.fetch = async (url) => {
