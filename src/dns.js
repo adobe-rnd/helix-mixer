@@ -165,7 +165,7 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
  * @returns {Promise<string|null>}
  */
 export async function resolveCustomDomain(domain) {
-  const pattern = /^[^-]+--[^-]+--[^.]+\.domains\.aem\.network$/;
+  const pattern = /^[a-z0-9-]+--[a-z0-9-]+--[a-z0-9-]+\.domains\.aem\.network$/;
   const providers = [
     'https://1.1.1.1/dns-query',
     'https://dns.google/dns-query',
