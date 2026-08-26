@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.2...v1.8.3) (2026-08-26)
+
+
+### Bug Fixes
+
+* **dns:** validate custom domain CNAME has exactly three segments ([#51](https://github.com/adobe-rnd/helix-mixer/issues/51)) ([5a35c48](https://github.com/adobe-rnd/helix-mixer/commit/5a35c48305248bc054e7c30aeb99591010c62f3f))
+
 ## [1.8.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.1...v1.8.2) (2026-07-20)
 
 
