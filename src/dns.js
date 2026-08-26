@@ -155,6 +155,9 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
   return null;
 }
 
+const SEGMENT = '[a-z0-9]+(?:-[a-z0-9]+)*';
+const ORIGIN_PATTERN = new RegExp(`^${SEGMENT}--${SEGMENT}--${SEGMENT}\\.domains\\.aem\\.network$`);
+
 /**
  * Resolve custom domains to network origin CNAMEs using DNS-over-HTTPS.
  * Races multiple DNS providers for optimal latency:
@@ -165,7 +168,6 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
  * @returns {Promise<string|null>}
  */
 export async function resolveCustomDomain(domain) {
-  const pattern = /^[a-z0-9-]+--[a-z0-9-]+--[a-z0-9-]+\.domains\.aem\.network$/;
   const providers = [
     'https://1.1.1.1/dns-query',
     'https://dns.google/dns-query',
@@ -177,7 +179,7 @@ export async function resolveCustomDomain(domain) {
     const cname = await Promise.any(
       providers.map(async (provider) => {
         const result = await resolveCnameViaDoH(domain, provider);
-        if (!result || !pattern.test(result)) {
+        if (!result || !ORIGIN_PATTERN.test(result)) {
           throw new Error(`No valid CNAME from ${provider}`);
         }
         return result;

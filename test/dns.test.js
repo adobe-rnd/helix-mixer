@@ -117,6 +117,20 @@ describe('dns tests', () => {
     assert.strictEqual(cname, 'ref--site--org.domains.aem.network');
   });
 
+  it('resolves CNAME with single hyphens inside segments', async () => {
+    const target = 'my-ref--my-site--my-org.domains.aem.network.';
+    global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
+    const cname = await resolveCustomDomain('foo.example.com');
+    assert.strictEqual(cname, 'my-ref--my-site--my-org.domains.aem.network');
+  });
+
+  it('returns null when CNAME has more than three segments', async () => {
+    const target = 'ref--site--org--extra.domains.aem.network.';
+    global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
+    const cname = await resolveCustomDomain('foo.example.com');
+    assert.strictEqual(cname, null);
+  });
+
   it('returns null for DoH non-matching CNAME', async () => {
     const target = 'not-matching.example.com.';
     global.fetch = async () => makeDohResponse({ qname: 'foo.example.com.', cnameTarget: target });
