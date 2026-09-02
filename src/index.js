@@ -88,8 +88,7 @@ export async function main(request, context = {}) {
   }
 
   try {
-    const overrides = Object.fromEntries(ctx.url.searchParams.entries());
-    const config = await resolveConfig(ctx, overrides);
+    const config = await resolveConfig(ctx);
     ctx.config = config;
 
     ctx.log.debug('resolved config: ', JSON.stringify(config));

@@ -77,12 +77,11 @@ function applyOriginOverrides(ctx, backend) {
 }
 
 /**
- * This function resolves the configuration for a given context and overrides.
+ * This function resolves the configuration for a given context.
  * @param {Context} ctx - The context object.
- * @param {Partial<Config>} [overrides={}] - The overrides object.
  * @returns {Promise<Config|null>} - A promise that resolves to the configuration.
  */
-export async function resolveConfig(ctx, overrides = {}) {
+export async function resolveConfig(ctx) {
   const { log } = ctx;
 
   log.debug('headers: ', ctx.info.headers, ctx.info.headers.referer);
@@ -256,7 +255,6 @@ export async function resolveConfig(ctx, overrides = {}) {
     origin: backend.origin,
     protocol: backend.protocol || protocol,
     ...rawConfig,
-    ...overrides,
   };
 
   return resolved;
