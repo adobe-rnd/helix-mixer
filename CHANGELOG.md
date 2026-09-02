@@ -1,3 +1,10 @@
+## [1.8.4](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.3...v1.8.4) (2026-09-02)
+
+
+### Bug Fixes
+
+* remove request query-param config overrides ([#52](https://github.com/adobe-rnd/helix-mixer/issues/52)) ([c03bb3b](https://github.com/adobe-rnd/helix-mixer/commit/c03bb3b1d51511dd4af712029c2860b188603505))
+
 ## [1.8.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.2...v1.8.3) (2026-08-26)
 
 
