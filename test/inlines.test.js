@@ -541,6 +541,121 @@ describe('inlines tests', () => {
     assert.strictEqual(result.headers.get('x-cache-tag'), 'root-cf,cfx1,cfx2');
   });
 
+  it('should advance last-modified to the newest inlined fragment', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineFragments: { paths: ['/fragments/'] },
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/fragments/homepage-quiz.plain.html'] = new Response('<div class="quiz-fragment">Take the quiz</div>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Wed, 10 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const response = new Response('<p><a href="/fragments/homepage-quiz">quiz</a></p>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Mon, 01 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('last-modified'), 'Wed, 10 Jan 2024 00:00:00 GMT');
+  });
+
+  it('should keep the origin last-modified when it is newer than the fragment', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineFragments: { paths: ['/fragments/'] },
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/fragments/homepage-quiz.plain.html'] = new Response('<div class="quiz-fragment">Take the quiz</div>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Mon, 01 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const response = new Response('<p><a href="/fragments/homepage-quiz">quiz</a></p>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Wed, 10 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('last-modified'), 'Wed, 10 Jan 2024 00:00:00 GMT');
+  });
+
+  it('should not add last-modified when the origin response has none', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineFragments: { paths: ['/fragments/'] },
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/fragments/homepage-quiz.plain.html'] = new Response('<div class="quiz-fragment">Take the quiz</div>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Wed, 10 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const response = new Response('<p><a href="/fragments/homepage-quiz">quiz</a></p>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('last-modified'), null);
+  });
+
+  it('should advance last-modified to the newest inlined nav/footer', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineNav: true,
+        inlineFooter: true,
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+    mockResponses['https://main--helix-website--adobe.aem.live/nav/nav.plain.html'] = new Response(getFixture('inline-both', 'nav'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Fri, 15 Mar 2024 00:00:00 GMT',
+      },
+    });
+    mockResponses['https://main--helix-website--adobe.aem.live/footer/footer.plain.html'] = new Response(getFixture('inline-both', 'footer'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Mon, 01 Jan 2024 00:00:00 GMT',
+      },
+    });
+
+    const response = new Response(getFixture('inline-both', 'initial'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Mon, 01 Jan 2024 00:00:00 GMT',
+      },
+    });
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('last-modified'), 'Fri, 15 Mar 2024 00:00:00 GMT');
+  });
+
   it('should inline nav', async () => {
     const ctx = TEST_CONTEXT({
       config: {

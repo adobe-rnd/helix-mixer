@@ -120,6 +120,35 @@ function mergeCacheKeys(cacheKeys, headers) {
 }
 
 /**
+ * Track the most recent `last-modified` across responses.
+ * @param {{ value: number }} tracker latest last-modified as epoch ms
+ * @param {{ get: (name: string) => string | null | undefined }} headers
+ */
+function mergeLastModified(tracker, headers) {
+  const raw = headers.get('last-modified');
+  if (!raw) {
+    return;
+  }
+  const ts = Date.parse(raw);
+  if (!Number.isNaN(ts) && ts > tracker.value) {
+    tracker.value = ts;
+  }
+}
+
+/**
+ * Advance the response's `last-modified` to the latest inlined value.
+ * Only updates when the origin response already carried a `last-modified`.
+ * @param {Headers} headers headers being built for the new response
+ * @param {Headers} original headers of the origin response
+ * @param {{ value: number }} tracker latest last-modified as epoch ms
+ */
+function applyLastModified(headers, original, tracker) {
+  if (original.has('last-modified') && tracker.value > Number.NEGATIVE_INFINITY) {
+    headers.set('last-modified', new Date(tracker.value).toUTCString());
+  }
+}
+
+/**
  * @param {Context} ctx
  * @returns {string[]}
  */
@@ -298,10 +327,11 @@ function applyReplacements(markup, replacements) {
 /**
  * @param {Context} ctx
  * @param {Record<string, Set<string>>} cacheKeys
+ * @param {{ value: number }} lastModified
  * @param {string} path
  * @returns {Promise<string|null>}
  */
-async function fetchFragmentMarkup(ctx, cacheKeys, path) {
+async function fetchFragmentMarkup(ctx, cacheKeys, lastModified, path) {
   const url = getInlineUrl(ctx, path);
   const tagResponse = await ffetch(url.toString(), {
     headers: {
@@ -320,6 +350,7 @@ async function fetchFragmentMarkup(ctx, cacheKeys, path) {
   }
 
   mergeCacheKeys(cacheKeys, tagResponse.headers);
+  mergeLastModified(lastModified, tagResponse.headers);
   return tagResponse.text();
 }
 
@@ -329,11 +360,12 @@ async function fetchFragmentMarkup(ctx, cacheKeys, path) {
  * @param {Context} ctx
  * @param {string} markup
  * @param {Record<string, Set<string>>} cacheKeys
+ * @param {{ value: number }} lastModified
  * @param {string} path path to resource to fetch
  * @param {'header' | 'footer'} tag tag to replace in markup
  * @returns {Promise<string>}
  */
-async function inlineTag(ctx, markup, cacheKeys, path, tag) {
+async function inlineTag(ctx, markup, cacheKeys, lastModified, path, tag) {
   if (!path) {
     return markup;
   }
@@ -356,6 +388,7 @@ async function inlineTag(ctx, markup, cacheKeys, path, tag) {
   }
 
   mergeCacheKeys(cacheKeys, tagResponse.headers);
+  mergeLastModified(lastModified, tagResponse.headers);
   const tagMarkup = await tagResponse.text();
   const indentMatch = markup.match(new RegExp(`([^\\S\\n]*)<${tag}>`));
   /* c8 ignore next */
@@ -371,9 +404,10 @@ ${' '.repeat(indentCount)}</${tag}>`);
  * @param {Context} ctx
  * @param {string} markup
  * @param {Record<string, Set<string>>} cacheKeys
+ * @param {{ value: number }} lastModified
  * @returns {Promise<string>}
  */
-async function inlineFragments(ctx, markup, cacheKeys) {
+async function inlineFragments(ctx, markup, cacheKeys, lastModified) {
   const inlinePaths = getInlinePaths(ctx);
   if (inlinePaths.length === 0 && !markup.includes('#inline')) {
     return markup;
@@ -393,7 +427,7 @@ async function inlineFragments(ctx, markup, cacheKeys) {
   /** @type {Map<string, string>} */
   const fragmentMap = new Map();
   await Promise.all(uniqueHrefs.map(async (href) => {
-    const fm = await fetchFragmentMarkup(ctx, cacheKeys, href);
+    const fm = await fetchFragmentMarkup(ctx, cacheKeys, lastModified, href);
     if (fm) {
       fragmentMap.set(href, fm);
     }
@@ -511,11 +545,15 @@ export default async function inlineResources(ctx, beurl, response) {
   const navPath = ctx.config.inlineNav ? meta.nav : undefined;
   const footerPath = ctx.config.inlineFooter ? meta.footer : undefined;
 
+  // Track the latest last-modified across the origin doc and inlined content
+  const lastModified = { value: Number.NEGATIVE_INFINITY };
+  mergeLastModified(lastModified, response.headers);
+
   // --- Inline fragments (additive, only when inlineFragments is configured) ---
   let fragmentCacheKeys;
   if (ctx.config.inlineFragments) {
     fragmentCacheKeys = createCacheKeys(response.headers);
-    markup = await inlineFragments(ctx, markup, fragmentCacheKeys);
+    markup = await inlineFragments(ctx, markup, fragmentCacheKeys, lastModified);
   }
 
   if (!navPath && !footerPath) {
@@ -543,6 +581,8 @@ export default async function inlineResources(ctx, beurl, response) {
       });
     }
 
+    applyLastModified(headers, response.headers, lastModified);
+
     return new Response(markup, {
       status: response.status,
       headers,
@@ -558,8 +598,8 @@ export default async function inlineResources(ctx, beurl, response) {
     }
   }
 
-  markup = await inlineTag(ctx, markup, cacheKeys, navPath, 'header');
-  markup = await inlineTag(ctx, markup, cacheKeys, footerPath, 'footer');
+  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, navPath, 'header');
+  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, footerPath, 'footer');
 
   // rebuild the response with the updated markup and cache keys
   // Combine cloudflare cache tags across both headers so both contain the union
@@ -591,6 +631,8 @@ export default async function inlineResources(ctx, beurl, response) {
   Object.entries(cacheHeaders).forEach(([key, value]) => {
     headers.set(key, value);
   });
+
+  applyLastModified(headers, response.headers, lastModified);
 
   // Return uncompressed markup - CDN will handle compression via x-compress-hint
   return new Response(markup, {
