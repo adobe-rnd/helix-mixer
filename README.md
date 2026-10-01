@@ -9,7 +9,7 @@ helix-mixer is part of the Adobe Helix ecosystem, providing dynamic content rout
 ## How it Works
 
 1. **Request Processing**: Incoming requests are analyzed to extract organization, site, and reference information from the subdomain
-2. **Configuration Fetching**: Service retrieves routing configuration from the AEM config service (edge-cached for 60s on both Cloudflare and Fastly, so config changes can take up to ~1 minute per POP to take effect)
+2. **Configuration Fetching**: Service retrieves routing configuration from the AEM config service (edge-cached for 60s on both Cloudflare and Fastly, so config changes can take up to ~1 minute per POP to take effect; 404s are cached for only 5s so a newly published config is picked up quickly)
 3. **Pattern Matching**: URL paths are matched against configured glob patterns to determine the target backend
 4. **Request Proxying**: Requests are forwarded to the matched backend with optional path transformations
 

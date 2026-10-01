@@ -22,12 +22,20 @@ const SOURCE = 'CONFIG_SERVICE';
 export const CONFIG_CACHE_TTL = 60;
 
 /**
+ * Edge cache TTL (seconds) for config service 404s. A 404 falls back to an empty
+ * config, so keep it short to let a transient 404 (e.g. right after a new site's
+ * config is published) recover quickly instead of sticking for the full TTL.
+ */
+export const CONFIG_NOT_FOUND_CACHE_TTL = 5;
+
+/**
  * Builds the fetch init for the config service request, including edge cache
  * settings for both runtimes:
  * - Cloudflare: `cf.cacheTtlByStatus` (ignored on Fastly)
  * - Fastly Compute: `cacheOverride` (only set when the `CacheOverride` global exists)
  *
- * Only successful and 404 responses are cached; server errors are never cached.
+ * Successful responses are cached for {@link CONFIG_CACHE_TTL}, 404s for the shorter
+ * {@link CONFIG_NOT_FOUND_CACHE_TTL}; server errors are never cached.
  *
  * @param {string} token - config service access token
  * @returns {Record<string, unknown>}
@@ -42,7 +50,7 @@ export function getConfigFetchInit(token) {
     cf: {
       cacheTtlByStatus: {
         '200-299': CONFIG_CACHE_TTL,
-        404: CONFIG_CACHE_TTL,
+        404: CONFIG_NOT_FOUND_CACHE_TTL,
         '500-599': 0,
       },
     },
@@ -50,7 +58,17 @@ export function getConfigFetchInit(token) {
   // @ts-ignore - Fastly Compute global
   if (typeof globalThis.CacheOverride === 'function') {
     // @ts-ignore
-    init.cacheOverride = new globalThis.CacheOverride('override', { ttl: CONFIG_CACHE_TTL });
+    init.cacheOverride = new globalThis.CacheOverride('override', {
+      ttl: CONFIG_CACHE_TTL,
+      afterSend: (res) => {
+        if (res.status === 404) {
+          res.ttl = CONFIG_NOT_FOUND_CACHE_TTL;
+        } else if (res.status >= 500) {
+          return { cache: false };
+        }
+        return undefined;
+      },
+    });
   }
   return init;
 }
