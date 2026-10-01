@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.4...v1.9.0) (2026-10-01)
+
+
+### Features
+
+* cache config service response at the edge for 60s ([#54](https://github.com/adobe-rnd/helix-mixer/issues/54)) ([8a725d4](https://github.com/adobe-rnd/helix-mixer/commit/8a725d4f9b31af25705989dc0b439edfcd4b29e0))
+
 ## [1.8.4](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.3...v1.8.4) (2026-09-02)
 
 
