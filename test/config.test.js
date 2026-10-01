@@ -11,7 +11,17 @@
  */
 
 import assert from 'node:assert';
-import { resolveConfig } from '../src/config.js';
+import {
+  resolveConfig, getConfigFetchInit, CONFIG_CACHE_TTL, CONFIG_NOT_FOUND_CACHE_TTL,
+} from '../src/config.js';
+
+// Minimal stand-in for the Fastly Compute `CacheOverride` global
+class MockCacheOverride {
+  constructor(mode, opts) {
+    this.mode = mode;
+    this.opts = opts;
+  }
+}
 
 // Store original fetch to restore later
 const originalFetch = globalThis.fetch;
@@ -891,6 +901,63 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.strictEqual(config.pattern, '**/content-images/media_*');
       assert.strictEqual(config.origin, 'main--site--org.aem.live');
       assert.strictEqual(config.pathname, '/path/to/product/content-images/media_abc123.jpg');
+    });
+  });
+  describe('Config fetch caching', () => {
+    afterEach(() => {
+      delete globalThis.CacheOverride;
+    });
+
+    it('sets cloudflare cache ttl by status and no fastly override outside fastly', () => {
+      const init = getConfigFetchInit('tok');
+      assert.deepStrictEqual(init.headers, {
+        'x-access-token': 'tok',
+        'x-backend-type': 'cloudflare',
+      });
+      assert.deepStrictEqual(init.cf, {
+        cacheTtlByStatus: { '200-299': 60, 404: 5, '500-599': 0 },
+      });
+      assert.strictEqual(init.cacheOverride, undefined);
+      assert.strictEqual(CONFIG_CACHE_TTL, 60);
+      assert.strictEqual(CONFIG_NOT_FOUND_CACHE_TTL, 5);
+      assert.ok(CONFIG_NOT_FOUND_CACHE_TTL < CONFIG_CACHE_TTL);
+    });
+
+    it('sets fastly cacheOverride when CacheOverride global exists', () => {
+      globalThis.CacheOverride = MockCacheOverride;
+      const init = getConfigFetchInit('tok');
+      assert.ok(init.cacheOverride instanceof globalThis.CacheOverride);
+      assert.strictEqual(init.cacheOverride.mode, 'override');
+      assert.strictEqual(init.cacheOverride.opts.ttl, 60);
+    });
+
+    it('fastly afterSend shortens 404 ttl and skips caching server errors', () => {
+      globalThis.CacheOverride = MockCacheOverride;
+      const { afterSend } = getConfigFetchInit('tok').cacheOverride.opts;
+
+      const ok = { status: 200, ttl: 60 };
+      assert.strictEqual(afterSend(ok), undefined);
+      assert.strictEqual(ok.ttl, 60);
+
+      const notFound = { status: 404, ttl: 60 };
+      assert.strictEqual(afterSend(notFound), undefined);
+      assert.strictEqual(notFound.ttl, CONFIG_NOT_FOUND_CACHE_TTL);
+
+      assert.deepStrictEqual(afterSend({ status: 503, ttl: 60 }), { cache: false });
+    });
+
+    it('passes cache settings to the config service fetch', async () => {
+      let captured;
+      const mockFetch = globalThis.fetch;
+      globalThis.fetch = async (url, init) => {
+        captured = init;
+        return mockFetch(url, init);
+      };
+      const ctx = createMockContext('main--site--org', '/');
+      await resolveConfig(ctx);
+      assert.strictEqual(captured.headers['cache-control'], undefined);
+      assert.strictEqual(captured.headers['x-access-token'], 'test-token');
+      assert.deepStrictEqual(captured.cf.cacheTtlByStatus['200-299'], 60);
     });
   });
 });

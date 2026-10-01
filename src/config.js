@@ -18,6 +18,61 @@ import {
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
 
+/** Edge cache TTL (seconds) for config service responses. */
+export const CONFIG_CACHE_TTL = 60;
+
+/**
+ * Edge cache TTL (seconds) for config service 404s. A 404 falls back to an empty
+ * config, so keep it short to let a transient 404 (e.g. right after a new site's
+ * config is published) recover quickly instead of sticking for the full TTL.
+ */
+export const CONFIG_NOT_FOUND_CACHE_TTL = 5;
+
+/**
+ * Builds the fetch init for the config service request, including edge cache
+ * settings for both runtimes:
+ * - Cloudflare: `cf.cacheTtlByStatus` (ignored on Fastly)
+ * - Fastly Compute: `cacheOverride` (only set when the `CacheOverride` global exists)
+ *
+ * Successful responses are cached for {@link CONFIG_CACHE_TTL}, 404s for the shorter
+ * {@link CONFIG_NOT_FOUND_CACHE_TTL}; server errors are never cached.
+ *
+ * @param {string} token - config service access token
+ * @returns {Record<string, unknown>}
+ */
+export function getConfigFetchInit(token) {
+  /** @type {Record<string, unknown>} */
+  const init = {
+    headers: {
+      'x-access-token': token,
+      'x-backend-type': 'cloudflare',
+    },
+    cf: {
+      cacheTtlByStatus: {
+        '200-299': CONFIG_CACHE_TTL,
+        404: CONFIG_NOT_FOUND_CACHE_TTL,
+        '500-599': 0,
+      },
+    },
+  };
+  // @ts-ignore - Fastly Compute global
+  if (typeof globalThis.CacheOverride === 'function') {
+    // @ts-ignore
+    init.cacheOverride = new globalThis.CacheOverride('override', {
+      ttl: CONFIG_CACHE_TTL,
+      afterSend: (res) => {
+        if (res.status === 404) {
+          res.ttl = CONFIG_NOT_FOUND_CACHE_TTL;
+        } else if (res.status >= 500) {
+          return { cache: false };
+        }
+        return undefined;
+      },
+    });
+  }
+  return init;
+}
+
 /**
  * @param {string[]} patterns - An array of pattern strings to match against.
  * @param {string} path - The path string to match patterns against.
@@ -114,13 +169,10 @@ export async function resolveConfig(ctx) {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
     const configUrl = `https://config.aem.page/main--${site}--${org}/config.json?scope=public`;
-    const res = await ffetch(configUrl, {
-      headers: {
-        'cache-control': 'no-cache',
-        'x-access-token': await ctx.env.HLX_CONFIG_SERVICE_TOKEN,
-        'x-backend-type': 'cloudflare',
-      },
-    });
+    const res = await ffetch(
+      configUrl,
+      getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
+    );
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
