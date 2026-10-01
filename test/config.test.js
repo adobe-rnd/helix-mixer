@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert';
-import { resolveConfig } from '../src/config.js';
+import { resolveConfig, getConfigFetchInit, CONFIG_CACHE_TTL } from '../src/config.js';
 
 // Store original fetch to restore later
 const originalFetch = globalThis.fetch;
@@ -891,6 +891,51 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       assert.strictEqual(config.pattern, '**/content-images/media_*');
       assert.strictEqual(config.origin, 'main--site--org.aem.live');
       assert.strictEqual(config.pathname, '/path/to/product/content-images/media_abc123.jpg');
+    });
+  });
+  describe('Config fetch caching', () => {
+    afterEach(() => {
+      delete globalThis.CacheOverride;
+    });
+
+    it('sets cloudflare cache ttl by status and no fastly override outside fastly', () => {
+      const init = getConfigFetchInit('tok');
+      assert.deepStrictEqual(init.headers, {
+        'x-access-token': 'tok',
+        'x-backend-type': 'cloudflare',
+      });
+      assert.deepStrictEqual(init.cf, {
+        cacheTtlByStatus: { '200-299': 60, 404: 60, '500-599': 0 },
+      });
+      assert.strictEqual(init.cacheOverride, undefined);
+      assert.strictEqual(CONFIG_CACHE_TTL, 60);
+    });
+
+    it('sets fastly cacheOverride when CacheOverride global exists', () => {
+      globalThis.CacheOverride = class {
+        constructor(mode, opts) {
+          this.mode = mode;
+          this.opts = opts;
+        }
+      };
+      const init = getConfigFetchInit('tok');
+      assert.ok(init.cacheOverride instanceof globalThis.CacheOverride);
+      assert.strictEqual(init.cacheOverride.mode, 'override');
+      assert.deepStrictEqual(init.cacheOverride.opts, { ttl: 60 });
+    });
+
+    it('passes cache settings to the config service fetch', async () => {
+      let captured;
+      const mockFetch = globalThis.fetch;
+      globalThis.fetch = async (url, init) => {
+        captured = init;
+        return mockFetch(url, init);
+      };
+      const ctx = createMockContext('main--site--org', '/');
+      await resolveConfig(ctx);
+      assert.strictEqual(captured.headers['cache-control'], undefined);
+      assert.strictEqual(captured.headers['x-access-token'], 'test-token');
+      assert.deepStrictEqual(captured.cf.cacheTtlByStatus['200-299'], 60);
     });
   });
 });

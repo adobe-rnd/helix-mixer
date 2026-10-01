@@ -18,6 +18,43 @@ import {
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
 
+/** Edge cache TTL (seconds) for config service responses. */
+export const CONFIG_CACHE_TTL = 60;
+
+/**
+ * Builds the fetch init for the config service request, including edge cache
+ * settings for both runtimes:
+ * - Cloudflare: `cf.cacheTtlByStatus` (ignored on Fastly)
+ * - Fastly Compute: `cacheOverride` (only set when the `CacheOverride` global exists)
+ *
+ * Only successful and 404 responses are cached; server errors are never cached.
+ *
+ * @param {string} token - config service access token
+ * @returns {Record<string, unknown>}
+ */
+export function getConfigFetchInit(token) {
+  /** @type {Record<string, unknown>} */
+  const init = {
+    headers: {
+      'x-access-token': token,
+      'x-backend-type': 'cloudflare',
+    },
+    cf: {
+      cacheTtlByStatus: {
+        '200-299': CONFIG_CACHE_TTL,
+        404: CONFIG_CACHE_TTL,
+        '500-599': 0,
+      },
+    },
+  };
+  // @ts-ignore - Fastly Compute global
+  if (typeof globalThis.CacheOverride === 'function') {
+    // @ts-ignore
+    init.cacheOverride = new globalThis.CacheOverride('override', { ttl: CONFIG_CACHE_TTL });
+  }
+  return init;
+}
+
 /**
  * @param {string[]} patterns - An array of pattern strings to match against.
  * @param {string} path - The path string to match patterns against.
@@ -114,13 +151,10 @@ export async function resolveConfig(ctx) {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
     const configUrl = `https://config.aem.page/main--${site}--${org}/config.json?scope=public`;
-    const res = await ffetch(configUrl, {
-      headers: {
-        'cache-control': 'no-cache',
-        'x-access-token': await ctx.env.HLX_CONFIG_SERVICE_TOKEN,
-        'x-backend-type': 'cloudflare',
-      },
-    });
+    const res = await ffetch(
+      configUrl,
+      getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
+    );
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
