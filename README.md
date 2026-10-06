@@ -120,6 +120,7 @@ Backends may define an `originOverrides` map to conditionally override backend p
 - Requests to `pipeline-cloudflare.adobecommerce.live` receive automatic authentication
 - Adds `x-auth-token` header using the `PRODUCT_PIPELINE_TOKEN` environment variable
 - Injects `x-robots-tag: noindex, nofollow` when the request has no `x-forwarded-host` header
+- Cloudflare string env bindings may be exposed asynchronously by edge adapters, so mixer awaits token/config/dev env values before using them
 
 ### Content Images
 - Requests whose path contains `/content-images/media_` are always routed to `{ref}--{site}--{org}.aem.live`, regardless of configured patterns

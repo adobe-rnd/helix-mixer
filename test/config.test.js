@@ -593,10 +593,10 @@ describe('Configuration Pattern Tests with Code Execution', () => {
       setupMockFetch();
 
       const ctx = createMockContext('ignored--subdomain--parts', '/test', {
-        DEV: 'true',
-        REF: 'feature',
-        SITE: 'devsite',
-        ORG: 'devorg',
+        DEV: Promise.resolve('true'),
+        REF: Promise.resolve('feature'),
+        SITE: Promise.resolve('devsite'),
+        ORG: Promise.resolve('devorg'),
       });
 
       const config = await resolveConfig(ctx);

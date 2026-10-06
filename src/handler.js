@@ -31,6 +31,7 @@ export default async function handler(ctx) {
 
   ctx.log.debug('fetching: ', beurl);
 
+  const productPipelineToken = isPipelineReq ? await ctx.env.PRODUCT_PIPELINE_TOKEN : undefined;
   const fetchHeaders = {
     ...ctx.info.headers,
     // Always force gzip/deflate to prevent brotli cache poisoning.
@@ -40,7 +41,7 @@ export default async function handler(ctx) {
     // we must prevent brotli from ever being requested or cached.
     'accept-encoding': 'gzip, deflate',
     ...(isPipelineReq ? {
-      'x-auth-token': `token ${ctx.env.PRODUCT_PIPELINE_TOKEN}`,
+      'x-auth-token': `token ${productPipelineToken}`,
       'x-forwarded-host': ctx.info.headers['x-forwarded-host'] || ctx.info.headers.host,
     } : {}),
     // backend-specific headers (incl. any resolved from originOverrides) win last

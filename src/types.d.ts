@@ -42,16 +42,24 @@ declare global {
     pathname: string;
   }
 
+  type EnvString = Promise<string | undefined> | string | undefined;
+
   export interface Env {
-    VERSION: Promise<string>;
-    ENVIRONMENT: Promise<string>;
-    DEV: Promise<string | undefined>;
-    PRODUCT_PIPELINE_TOKEN: Promise<string>;
+    VERSION: EnvString;
+    ENVIRONMENT: EnvString;
+    DEV: EnvString;
+    REF?: EnvString;
+    SITE?: EnvString;
+    ORG?: EnvString;
+    PRODUCT_PIPELINE_TOKEN?: EnvString;
+    HLX_CONFIG_SERVICE_TOKEN?: EnvString;
+    LETSENCRYPT_ACCOUNT_THUMBPRINT?: EnvString;
 
     // KV namespaces
     CONFIGS: KVNamespace<string>;
 
-    [key: string]: Promise<string> | KVNamespace<string> | R2Bucket;
+    [key: `CERT_${string}`]: Fetcher;
+    [key: string]: EnvString | KVNamespace<string> | R2Bucket | Fetcher;
   }
 
   export interface Context {
