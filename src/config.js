@@ -12,7 +12,7 @@
 
 import { decompressResponse } from './decompress.js';
 import {
-  errorWithResponse, ffetch, globToRegExp, hostGlobToRegExp,
+  errorWithResponse, ffetch, globToRegExp, hostGlobToRegExp, redactHeaders,
 } from './util.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
@@ -139,7 +139,7 @@ function applyOriginOverrides(ctx, backend) {
 export async function resolveConfig(ctx) {
   const { log } = ctx;
 
-  log.debug('headers: ', ctx.info.headers, ctx.info.headers.referer);
+  log.debug('headers: ', redactHeaders(ctx.info.headers), ctx.info.headers.referer);
   const isDev = await ctx.env.DEV === 'true';
   let ref;
   let site;
