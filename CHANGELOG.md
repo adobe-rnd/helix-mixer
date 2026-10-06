@@ -1,3 +1,15 @@
+# [1.9.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.4...v1.9.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* force deploy ([92dbe53](https://github.com/adobe-rnd/helix-mixer/commit/92dbe5358110ecbb87ba4ebc0539758ac54158cb))
+
+
+### Features
+
+* cache config service response at the edge for 60s ([#54](https://github.com/adobe-rnd/helix-mixer/issues/54)) ([8a725d4](https://github.com/adobe-rnd/helix-mixer/commit/8a725d4f9b31af25705989dc0b439edfcd4b29e0))
+
 # [1.9.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.4...v1.9.0) (2026-10-01)
 
 
