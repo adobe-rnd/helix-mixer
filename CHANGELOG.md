@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.0...v1.9.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* await async env bindings ([#55](https://github.com/adobe-rnd/helix-mixer/issues/55)) ([28f60a8](https://github.com/adobe-rnd/helix-mixer/commit/28f60a838bb96b82436161d0d0dc0077e453e2b7))
+
 # [1.9.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.8.4...v1.9.0) (2026-10-06)
 
 
