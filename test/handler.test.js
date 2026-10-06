@@ -93,7 +93,7 @@ describe('handler tests', () => {
     const ctx = TEST_CONTEXT({
       url: new URL('https://main--site--org.aem.network/used/foo'),
       info: { headers: { host: 'main--site--org.aem.network' } },
-      env: { PRODUCT_PIPELINE_TOKEN: 'tok' },
+      env: { PRODUCT_PIPELINE_TOKEN: Promise.resolve('tok') },
       config: {
         protocol: 'https',
         origin: 'pipeline-cloudflare.adobecommerce.live',
@@ -124,7 +124,7 @@ describe('handler tests', () => {
           'x-forwarded-host': 'www.example.com',
         },
       },
-      env: { PRODUCT_PIPELINE_TOKEN: 'tok' },
+      env: { PRODUCT_PIPELINE_TOKEN: Promise.resolve('tok') },
       config: {
         protocol: 'https',
         origin: 'pipeline-cloudflare.adobecommerce.live',

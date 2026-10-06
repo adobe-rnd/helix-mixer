@@ -140,17 +140,20 @@ export async function resolveConfig(ctx) {
   const { log } = ctx;
 
   log.debug('headers: ', ctx.info.headers, ctx.info.headers.referer);
+  const isDev = await ctx.env.DEV === 'true';
   let ref;
   let site;
   let org;
-  if (await ctx.env.DEV === 'true') {
-    ref = ctx.env.REF;
-    site = ctx.env.SITE;
-    org = ctx.env.ORG;
+  if (isDev) {
+    [ref, site, org] = await Promise.all([
+      ctx.env.REF,
+      ctx.env.SITE,
+      ctx.env.ORG,
+    ]);
   } else {
     ([ref, site, org] = ctx.info.subdomain.split('--'));
   }
-  log.debug('rso: ', ref, site, org, await ctx.env.DEV);
+  log.debug('rso: ', ref, site, org, isDev);
   if (!org) {
     throw errorWithResponse(404, 'missing org');
   }
