@@ -16,6 +16,7 @@ import {
   globToRegExp,
   hostGlobToRegExp,
   isCustomDomain,
+  redactHeaders,
 } from '../src/util.js';
 
 describe('util tests', () => {
@@ -170,6 +171,36 @@ describe('util tests', () => {
         headers: { 'x-custom-domain': 'example.com' },
       });
       assert.strictEqual(isCustomDomain(ciUrl2, reqWithHeader2), true);
+    });
+  });
+
+  describe('redactHeaders', () => {
+    it('redacts sensitive request and auth headers', () => {
+      assert.deepStrictEqual(redactHeaders({
+        authorization: 'Bearer secret',
+        cookie: 'session=value',
+        'x-aem-edge-key': 'edge-secret',
+        'x-auth-token': 'token secret',
+        'x-custom-header': 'kept',
+      }), {
+        authorization: '[redacted]',
+        cookie: '[redacted]',
+        'x-aem-edge-key': '[redacted]',
+        'x-auth-token': '[redacted]',
+        'x-custom-header': 'kept',
+      });
+    });
+
+    it('redacts common secret suffixes case-insensitively', () => {
+      assert.deepStrictEqual(redactHeaders({
+        'X-Access-Token': 'secret',
+        'x-client-secret': 'secret',
+        'Set-Cookie': 'session=value',
+      }), {
+        'X-Access-Token': '[redacted]',
+        'x-client-secret': '[redacted]',
+        'Set-Cookie': '[redacted]',
+      });
     });
   });
 

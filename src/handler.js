@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { ffetch } from './util.js';
+import { ffetch, redactHeaders } from './util.js';
 import inlineResources from './inlines.js';
 
 /**
@@ -48,7 +48,7 @@ export default async function handler(ctx) {
     ...(backend?.headers ?? {}),
   };
 
-  ctx.log.debug('Fetching with headers:', fetchHeaders);
+  ctx.log.debug('Fetching with headers:', redactHeaders(fetchHeaders));
 
   let beresp = await ffetch(beurl.toString(), {
     method: ctx.info.method,
