@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.1...v1.9.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* redact sensitive headers in logs ([#56](https://github.com/adobe-rnd/helix-mixer/issues/56)) ([7c1a1a2](https://github.com/adobe-rnd/helix-mixer/commit/7c1a1a29787274a8570f8208753483fab316363e))
+
 ## [1.9.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.0...v1.9.1) (2026-10-06)
 
 
