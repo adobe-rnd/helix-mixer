@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.2...v1.10.0) (2026-10-26)
+
+
+### Features
+
+* advance response last-modified to newest inlined content ([#57](https://github.com/adobe-rnd/helix-mixer/issues/57)) ([38f02de](https://github.com/adobe-rnd/helix-mixer/commit/38f02de8e78fd770453b891caeec8d0998f22a78))
+
 ## [1.9.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.1...v1.9.2) (2026-10-07)
 
 
