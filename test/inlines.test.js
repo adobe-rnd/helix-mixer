@@ -622,6 +622,26 @@ describe('inlines tests', () => {
     assert.strictEqual(result.headers.get('last-modified'), null);
   });
 
+  it('should leave last-modified untouched when nothing is inlined', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineFragments: { paths: ['/fragments/'] },
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    const response = new Response('<p><a href="/other/page">link</a></p>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'last-modified': 'Mon, 01 Jan 2024 00:00:00 +0000',
+      },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('last-modified'), 'Mon, 01 Jan 2024 00:00:00 +0000');
+  });
+
   it('should advance last-modified to the newest inlined nav/footer', async () => {
     const ctx = TEST_CONTEXT({
       config: {

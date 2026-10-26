@@ -125,25 +125,20 @@ function mergeCacheKeys(cacheKeys, headers) {
  * @param {{ get: (name: string) => string | null | undefined }} headers
  */
 function mergeLastModified(tracker, headers) {
-  const raw = headers.get('last-modified');
-  if (!raw) {
-    return;
-  }
-  const ts = Date.parse(raw);
-  if (!Number.isNaN(ts) && ts > tracker.value) {
+  const ts = Date.parse(headers.get('last-modified'));
+  if (ts > tracker.value) {
     tracker.value = ts;
   }
 }
 
 /**
- * Advance the response's `last-modified` to the latest inlined value.
- * Only updates when the origin response already carried a `last-modified`.
+ * Advance the response's `last-modified` when an inlined resource is newer than the origin.
  * @param {Headers} headers headers being built for the new response
  * @param {Headers} original headers of the origin response
- * @param {{ value: number }} tracker latest last-modified as epoch ms
+ * @param {{ value: number }} tracker latest inlined last-modified as epoch ms
  */
 function applyLastModified(headers, original, tracker) {
-  if (original.has('last-modified') && tracker.value > Number.NEGATIVE_INFINITY) {
+  if (tracker.value > Date.parse(original.get('last-modified'))) {
     headers.set('last-modified', new Date(tracker.value).toUTCString());
   }
 }
@@ -545,9 +540,8 @@ export default async function inlineResources(ctx, beurl, response) {
   const navPath = ctx.config.inlineNav ? meta.nav : undefined;
   const footerPath = ctx.config.inlineFooter ? meta.footer : undefined;
 
-  // Track the latest last-modified across the origin doc and inlined content
-  const lastModified = { value: Number.NEGATIVE_INFINITY };
-  mergeLastModified(lastModified, response.headers);
+  // Latest last-modified across inlined content only
+  const lastModified = { value: 0 };
 
   // --- Inline fragments (additive, only when inlineFragments is configured) ---
   let fragmentCacheKeys;
