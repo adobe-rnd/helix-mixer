@@ -82,7 +82,7 @@
     "nock": "13.5.4",
     "semantic-release": "24.2.7",
     "sinon": "19.0.5",
-    "wrangler": "4.47.0"
+    "wrangler": "4.59.1"
   },
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
