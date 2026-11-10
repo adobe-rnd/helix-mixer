@@ -1,3 +1,17 @@
+# [1.11.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.10.0...v1.11.0) (2026-11-10)
+
+
+### Bug Fixes
+
+* address review on subrequest timeouts ([34b5690](https://github.com/adobe-rnd/helix-mixer/commit/34b56900adeb1550a125d3c0c7eacc61b6f717ed))
+* bound async env reads by the request deadline ([978c333](https://github.com/adobe-rnd/helix-mixer/commit/978c333693ff455d465a9c1940d2ae4076c47509))
+* read DoH response body within the lookup timeout ([2922dcd](https://github.com/adobe-rnd/helix-mixer/commit/2922dcd8091a73dd8e35c12fa61faa88025212ca))
+
+
+### Features
+
+* add subrequest timeouts and return 502 for upstream failures ([a763fb5](https://github.com/adobe-rnd/helix-mixer/commit/a763fb5ad56bd7c42d5dcd3f7bf108effc6ba1b3)), closes [#53](https://github.com/adobe-rnd/helix-mixer/issues/53)
+
 # [1.10.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.9.2...v1.10.0) (2026-10-26)
 
 
