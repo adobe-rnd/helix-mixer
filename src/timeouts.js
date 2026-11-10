@@ -1,0 +1,167 @@
+/*
+ * Copyright 2026 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import {
+  errorWithResponse, ffetch, FetchTimeoutError, withTimeout,
+} from './util.js';
+
+/**
+ * Overall deadline (ms) for a request, measured from when the request is received.
+ * Every subrequest timeout is capped by the time left until this deadline, so slow
+ * subrequests can't add up past it.
+ */
+export const REQUEST_DEADLINE = 30000;
+
+/**
+ * Timeouts cover the response headers and, where the caller buffers the body, the
+ * body read as well. A backend body that is streamed through is not covered.
+ */
+
+/** Timeout (ms) for the config service fetch, incl. reading the config JSON. */
+export const CONFIG_FETCH_TIMEOUT = 15000;
+
+/**
+ * Timeout (ms) for the backend fetch: until the response headers, plus reading the
+ * page when inlines are configured.
+ */
+export const BACKEND_FETCH_TIMEOUT = 30000;
+
+/** Timeout (ms) for inlined fragment / header / footer fetches, incl. the body. */
+export const INLINE_FETCH_TIMEOUT = 15000;
+
+/** Timeout (ms) for a single DoH CNAME lookup, incl. the body. */
+export const DNS_LOOKUP_TIMEOUT = 5000;
+
+const MAX_HEADER_MESSAGE_LENGTH = 256;
+
+/**
+ * Makes a message safe to use as an HTTP header value.
+ * @param {string} message
+ * @returns {string}
+ */
+export function toHeaderValue(message) {
+  return String(message)
+    .replace(/[^\x20-\x7e]+/g, ' ')
+    .trim()
+    .slice(0, MAX_HEADER_MESSAGE_LENGTH);
+}
+
+/**
+ * Returns the timeout to use for a subrequest: the given timeout, capped by the time
+ * left until the request deadline (if any).
+ * @param {Pick<Context, 'deadline'>} ctx
+ * @param {number} timeout
+ * @returns {number}
+ */
+export function getTimeout(ctx, timeout) {
+  if (!ctx.deadline) {
+    return timeout;
+  }
+  return Math.max(0, Math.min(timeout, ctx.deadline - Date.now()));
+}
+
+/**
+ * Headers for responses that report an upstream problem, so downstream caches don't
+ * keep a transient error.
+ */
+export const NO_STORE_HEADERS = Object.freeze({ 'cache-control': 'private, no-store' });
+
+/**
+ * Creates the `502` response error for a failed required upstream, and logs it.
+ * @param {Context} ctx
+ * @param {object} opts
+ * @param {string} opts.stage name of the subrequest, e.g. `config` or `backend`
+ * @param {string} opts.host upstream host
+ * @param {Error} opts.error
+ * @param {number} opts.timeout timeout (ms) that applied
+ * @param {number} opts.start epoch ms when the subrequest started
+ * @param {string} [opts.action] what was done, used in the message
+ * @returns {Error & { response: Response }}
+ */
+export function upstreamError(ctx, {
+  stage, host, error, timeout, start, action = 'fetch',
+}) {
+  const message = error instanceof FetchTimeoutError
+    ? `${stage} ${action} timeout (${host}) after ${timeout}ms`
+    : `${stage} ${action} error (${host}): ${error.message}`;
+  ctx.log.error(`${message} (elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
+  // @ts-ignore
+  return errorWithResponse(502, toHeaderValue(message), '', NO_STORE_HEADERS);
+}
+
+/**
+ * Fetches a required upstream resource. Timeouts and network errors are turned into a
+ * `502` response error with an `x-error` identifying the stage and upstream host, e.g.
+ * `config fetch timeout (config.example) after 15000ms`. If the request deadline has
+ * already passed, the subrequest isn't sent.
+ *
+ * If `read` is given, it runs inside the timeout, and its errors (e.g. a body that
+ * fails or stalls) are handled the same way.
+ *
+ * @template [T=import("@cloudflare/workers-types").Response]
+ * @param {Context} ctx
+ * @param {object} opts
+ * @param {string} opts.stage name of the subrequest, e.g. `config` or `backend`
+ * @param {string} opts.url
+ * @param {Record<string, unknown>} opts.init fetch init
+ * @param {number} opts.timeout timeout (ms) before the deadline cap
+ * @param {(response: any) => T | Promise<T>} [opts.read]
+ * @returns {Promise<T>}
+ */
+export async function fetchUpstream(ctx, {
+  stage, url, init, timeout: maxTimeout, read,
+}) {
+  const { host } = new URL(url);
+  const timeout = getTimeout(ctx, maxTimeout);
+  if (timeout <= 0) {
+    const message = `${stage} fetch skipped (${host}): request deadline exceeded`;
+    ctx.log.error(`${message} (request=${ctx.requestId})`);
+    throw errorWithResponse(502, message, '', NO_STORE_HEADERS);
+  }
+  const start = Date.now();
+  try {
+    // @ts-ignore
+    return await ffetch(url, init, { timeout, read });
+  } catch (error) {
+    throw upstreamError(ctx, {
+      stage, host, error, timeout, start,
+    });
+  }
+}
+
+/**
+ * Reads an env value. Edge adapters may resolve env values asynchronously (e.g. a KV
+ * read or a fetch from the deploy gateway), so a pending value is bounded by the
+ * request deadline. A timeout or failure becomes a `502`, e.g.
+ * `env read timeout (NAME) after 30000ms`. Plain values are returned as is.
+ *
+ * @param {Context} ctx
+ * @param {string} name
+ * @returns {Promise<string|undefined>}
+ */
+export async function readEnv(ctx, name) {
+  const value = ctx.env[name];
+  if (typeof value?.then !== 'function') {
+    // @ts-ignore
+    return value;
+  }
+  const timeout = getTimeout(ctx, REQUEST_DEADLINE);
+  const start = Date.now();
+  try {
+    // @ts-ignore
+    return await withTimeout(Promise.resolve(value), timeout);
+  } catch (error) {
+    throw upstreamError(ctx, {
+      stage: 'env', action: 'read', host: name, error, timeout, start,
+    });
+  }
+}

@@ -10,7 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-import { ffetch, redactHeaders } from './util.js';
+import { redactHeaders } from './util.js';
+import { BACKEND_FETCH_TIMEOUT, fetchUpstream, readEnv } from './timeouts.js';
 import inlineResources from './inlines.js';
 
 /**
@@ -31,7 +32,7 @@ export default async function handler(ctx) {
 
   ctx.log.debug('fetching: ', beurl);
 
-  const productPipelineToken = isPipelineReq ? await ctx.env.PRODUCT_PIPELINE_TOKEN : undefined;
+  const productPipelineToken = isPipelineReq ? await readEnv(ctx, 'PRODUCT_PIPELINE_TOKEN') : undefined;
   const fetchHeaders = {
     ...ctx.info.headers,
     // Always force gzip/deflate to prevent brotli cache poisoning.
@@ -50,15 +51,21 @@ export default async function handler(ctx) {
 
   ctx.log.debug('Fetching with headers:', redactHeaders(fetchHeaders));
 
-  let beresp = await ffetch(beurl.toString(), {
-    method: ctx.info.method,
-    body: ctx.info.body,
-    redirect: 'manual',
-    headers: fetchHeaders,
-    cf: {
-      cacheEverything: false,
-      cacheTtl: 0,
+  // timeouts and network errors become a 502; upstream responses (incl. 5xx) pass through
+  let beresp = await fetchUpstream(ctx, {
+    stage: 'backend',
+    url: beurl.toString(),
+    init: {
+      method: ctx.info.method,
+      body: ctx.info.body,
+      redirect: 'manual',
+      headers: fetchHeaders,
+      cf: {
+        cacheEverything: false,
+        cacheTtl: 0,
+      },
     },
+    timeout: BACKEND_FETCH_TIMEOUT,
   });
 
   ctx.log.debug('Backend response headers:', {

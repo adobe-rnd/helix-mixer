@@ -14,19 +14,25 @@ import { acmeChallenge } from './acme.js';
 import { resolveConfig } from './config.js';
 import { resolveCustomDomain } from './dns.js';
 import handler from './handler.js';
+import { REQUEST_DEADLINE } from './timeouts.js';
 import { errorResponse, getEffectiveDomain, isCustomDomain } from './util.js';
 
 /**
  * @param {import("@cloudflare/workers-types").ExecutionContext} ectx
  * @param {Request} req the HTTP request object
  * @param {Env} env
+ * @param {{ requestId?: string }} [invocation] invocation info from the edge adapter
  * @returns {Promise<Context>}
  */
-export async function makeContext(ectx, req, env) {
+export async function makeContext(ectx, req, env, invocation = {}) {
   /** @type {Context} */
   // @ts-ignore
   const ctx = {
     executionContext: ectx,
+    // all subrequests together must finish within the overall deadline
+    deadline: Date.now() + REQUEST_DEADLINE,
+    // Fastly trace ID (from the adapter) or Cloudflare ray ID, to correlate logs
+    requestId: invocation?.requestId || req.headers.get('cf-ray') || req.headers.get('x-request-id') || '-',
   };
   // @ts-ignore
   ctx.attributes = {};
@@ -34,7 +40,7 @@ export async function makeContext(ectx, req, env) {
   ctx.url = new URL(req.url);
   if (isCustomDomain(ctx.url, req)) {
     const effectiveDomain = getEffectiveDomain(req);
-    const networkOrigin = await resolveCustomDomain(effectiveDomain);
+    const networkOrigin = await resolveCustomDomain(effectiveDomain, ctx.requestId);
     if (networkOrigin) {
       console.debug(`Resolving custom domain ${effectiveDomain} to ${networkOrigin}`);
       ctx.url.host = networkOrigin;
@@ -79,7 +85,7 @@ export async function makeContext(ectx, req, env) {
 export async function main(request, context = {}) {
   const env = context.env || {};
   const pctx = context.executionContext || {};
-  const ctx = await makeContext(pctx, request, env);
+  const ctx = await makeContext(pctx, request, env, context.invocation);
 
   const { pathname } = new URL(request.url);
   if (request.method === 'GET' && pathname.startsWith('/.well-known/acme-challenge/')) {
@@ -99,8 +105,10 @@ export async function main(request, context = {}) {
     return await handler(ctx);
   } catch (e) {
     if (e.response) {
+      // expected errors, incl. 502 for upstream timeouts and failures
       return e.response;
     }
+    // anything else is a bug in the mixer
     ctx.log.error(e, e.stack);
     return errorResponse(500, 'internal server error');
   }

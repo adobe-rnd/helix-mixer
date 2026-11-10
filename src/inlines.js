@@ -10,8 +10,16 @@
  * governing permissions and limitations under the License.
  */
 
-import { ffetch } from './util.js';
+import { ffetch, FetchTimeoutError, withTimeout } from './util.js';
 import { readResponseText } from './decompress.js';
+import {
+  BACKEND_FETCH_TIMEOUT,
+  getTimeout,
+  INLINE_FETCH_TIMEOUT,
+  NO_STORE_HEADERS,
+  toHeaderValue,
+  upstreamError,
+} from './timeouts.js';
 
 /**
  * @type {string[]}
@@ -320,15 +328,90 @@ function applyReplacements(markup, replacements) {
 }
 
 /**
+ * @param {Response} response
+ * @returns {boolean}
+ */
+function isInlineable(response) {
+  return response.status === 200 && !!response.headers.get('content-type')?.includes('text/html');
+}
+
+/**
+ * Fetch a resource to inline, including its body when it can be inlined. On timeout
+ * (headers or body), network error, or when the request deadline has passed, log a
+ * warning, record the error (sent as `x-inline-error`) and return null so the inline
+ * is skipped.
+ * @param {Context} ctx
+ * @param {string[]} inlineErrors
+ * @param {'fragment' | 'header' | 'footer'} kind
+ * @param {string} path
+ * @param {URL} url
+ * @param {Record<string, unknown>} init
+ * @returns {Promise<{ response: Response, text?: string }|null>}
+ */
+async function fetchInline(ctx, inlineErrors, kind, path, url, init) {
+  const timeout = getTimeout(ctx, INLINE_FETCH_TIMEOUT);
+  if (timeout <= 0) {
+    const message = `${kind} skipped (${path}): request deadline exceeded`;
+    ctx.log.warn(`${message} (host=${url.host}, request=${ctx.requestId})`);
+    inlineErrors.push(toHeaderValue(message));
+    return null;
+  }
+  const start = Date.now();
+  try {
+    return await ffetch(url.toString(), init, {
+      timeout,
+      read: async (response) => (isInlineable(response)
+        ? { response, text: await response.text() }
+        : { response }),
+    });
+  } catch (e) {
+    const message = e instanceof FetchTimeoutError
+      ? `${kind} fetch timeout (${path}) after ${timeout}ms`
+      : `${kind} fetch error (${path}): ${e.message}`;
+    ctx.log.warn(`${message} (host=${url.host}, elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
+    inlineErrors.push(toHeaderValue(message));
+    return null;
+  }
+}
+
+/**
+ * Cache headers dropped from a degraded response (see {@link applyInlineErrors}).
+ */
+const CDN_CACHE_HEADERS = [
+  'surrogate-control',
+  'cdn-cache-control',
+  'cloudflare-cdn-cache-control',
+  'edge-control',
+  'expires',
+];
+
+/**
+ * When an inline was skipped because of a timeout or network error, add
+ * `x-inline-error` and make the response uncacheable. The page is missing content
+ * and the cache keys of the skipped inline, so a purge of that inline wouldn't
+ * reach a cached copy.
+ * @param {Headers} headers
+ * @param {string[]} inlineErrors
+ */
+function applyInlineErrors(headers, inlineErrors) {
+  if (inlineErrors.length) {
+    headers.set('x-inline-error', toHeaderValue(inlineErrors.join(', ')));
+    headers.set('cache-control', NO_STORE_HEADERS['cache-control']);
+    CDN_CACHE_HEADERS.forEach((name) => headers.delete(name));
+  }
+}
+
+/**
  * @param {Context} ctx
  * @param {Record<string, Set<string>>} cacheKeys
  * @param {{ value: number }} lastModified
+ * @param {string[]} inlineErrors
  * @param {string} path
  * @returns {Promise<string|null>}
  */
-async function fetchFragmentMarkup(ctx, cacheKeys, lastModified, path) {
+async function fetchFragmentMarkup(ctx, cacheKeys, lastModified, inlineErrors, path) {
   const url = getInlineUrl(ctx, path);
-  const tagResponse = await ffetch(url.toString(), {
+  const tagResponse = await fetchInline(ctx, inlineErrors, 'fragment', path.replace(/#inline$/, ''), url, {
     headers: {
       'accept-encoding': 'identity',
       'x-byo-cdn-type': ctx.info.headers['x-byo-cdn-type'],
@@ -339,14 +422,18 @@ async function fetchFragmentMarkup(ctx, cacheKeys, lastModified, path) {
       cacheTtl: 0,
     },
   });
-  if (tagResponse.status !== 200 || !tagResponse.headers.get('content-type')?.includes('text/html')) {
-    ctx.log.warn(`Failed to inline fragment from ${path}: ${tagResponse.status}`);
+  if (!tagResponse) {
+    return null;
+  }
+  const { response, text } = tagResponse;
+  if (text === undefined) {
+    ctx.log.warn(`Failed to inline fragment from ${path}: ${response.status}`);
     return null;
   }
 
-  mergeCacheKeys(cacheKeys, tagResponse.headers);
-  mergeLastModified(lastModified, tagResponse.headers);
-  return tagResponse.text();
+  mergeCacheKeys(cacheKeys, response.headers);
+  mergeLastModified(lastModified, response.headers);
+  return text;
 }
 
 /**
@@ -356,18 +443,19 @@ async function fetchFragmentMarkup(ctx, cacheKeys, lastModified, path) {
  * @param {string} markup
  * @param {Record<string, Set<string>>} cacheKeys
  * @param {{ value: number }} lastModified
+ * @param {string[]} inlineErrors
  * @param {string} path path to resource to fetch
  * @param {'header' | 'footer'} tag tag to replace in markup
  * @returns {Promise<string>}
  */
-async function inlineTag(ctx, markup, cacheKeys, lastModified, path, tag) {
+async function inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, path, tag) {
   if (!path) {
     return markup;
   }
 
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
   const url = new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`);
-  const tagResponse = await ffetch(url.toString(), {
+  const tagResponse = await fetchInline(ctx, inlineErrors, tag, path, url, {
     headers: {
       'x-byo-cdn-type': ctx.info.headers['x-byo-cdn-type'],
       'x-push-invalidation': ctx.info.headers['x-push-invalidation'],
@@ -377,14 +465,17 @@ async function inlineTag(ctx, markup, cacheKeys, lastModified, path, tag) {
       cacheTtl: 0,
     },
   });
-  if (tagResponse.status !== 200 || !tagResponse.headers.get('content-type')?.includes('text/html')) {
-    ctx.log.warn(`Failed to inline ${tag} from ${path}: ${tagResponse.status}`);
+  if (!tagResponse) {
+    return markup;
+  }
+  const { response, text: tagMarkup } = tagResponse;
+  if (tagMarkup === undefined) {
+    ctx.log.warn(`Failed to inline ${tag} from ${path}: ${response.status}`);
     return markup;
   }
 
-  mergeCacheKeys(cacheKeys, tagResponse.headers);
-  mergeLastModified(lastModified, tagResponse.headers);
-  const tagMarkup = await tagResponse.text();
+  mergeCacheKeys(cacheKeys, response.headers);
+  mergeLastModified(lastModified, response.headers);
   const indentMatch = markup.match(new RegExp(`([^\\S\\n]*)<${tag}>`));
   /* c8 ignore next */
   const indentCount = indentMatch?.[1]?.length ?? 0;
@@ -400,9 +491,10 @@ ${' '.repeat(indentCount)}</${tag}>`);
  * @param {string} markup
  * @param {Record<string, Set<string>>} cacheKeys
  * @param {{ value: number }} lastModified
+ * @param {string[]} inlineErrors
  * @returns {Promise<string>}
  */
-async function inlineFragments(ctx, markup, cacheKeys, lastModified) {
+async function inlineFragments(ctx, markup, cacheKeys, lastModified, inlineErrors) {
   const inlinePaths = getInlinePaths(ctx);
   if (inlinePaths.length === 0 && !markup.includes('#inline')) {
     return markup;
@@ -422,7 +514,7 @@ async function inlineFragments(ctx, markup, cacheKeys, lastModified) {
   /** @type {Map<string, string>} */
   const fragmentMap = new Map();
   await Promise.all(uniqueHrefs.map(async (href) => {
-    const fm = await fetchFragmentMarkup(ctx, cacheKeys, lastModified, href);
+    const fm = await fetchFragmentMarkup(ctx, cacheKeys, lastModified, inlineErrors, href);
     if (fm) {
       fragmentMap.set(href, fm);
     }
@@ -528,13 +620,17 @@ export default async function inlineResources(ctx, beurl, response) {
     return response;
   }
 
-  // get the markup - automatically handles decompression if needed
+  // get the markup - automatically handles decompression if needed.
+  // The body is buffered here, so bound the read by the backend timeout / deadline.
   let markup;
+  const timeout = getTimeout(ctx, BACKEND_FETCH_TIMEOUT);
+  const start = Date.now();
   try {
-    markup = await readResponseText(response, ctx);
+    markup = await withTimeout(readResponseText(response, ctx), timeout);
   } catch (error) {
-    ctx.log.error('Failed to read response text:', error);
-    throw error;
+    throw upstreamError(ctx, {
+      stage: 'backend', host: beurl.host, error, timeout, start,
+    });
   }
   const meta = extractInlineMeta(markup);
   const navPath = ctx.config.inlineNav ? meta.nav : undefined;
@@ -542,12 +638,15 @@ export default async function inlineResources(ctx, beurl, response) {
 
   // Latest last-modified across inlined content only
   const lastModified = { value: 0 };
+  // inlines skipped because of a timeout or network error
+  /** @type {string[]} */
+  const inlineErrors = [];
 
   // --- Inline fragments (additive, only when inlineFragments is configured) ---
   let fragmentCacheKeys;
   if (ctx.config.inlineFragments) {
     fragmentCacheKeys = createCacheKeys(response.headers);
-    markup = await inlineFragments(ctx, markup, fragmentCacheKeys, lastModified);
+    markup = await inlineFragments(ctx, markup, fragmentCacheKeys, lastModified, inlineErrors);
   }
 
   if (!navPath && !footerPath) {
@@ -576,6 +675,7 @@ export default async function inlineResources(ctx, beurl, response) {
     }
 
     applyLastModified(headers, response.headers, lastModified);
+    applyInlineErrors(headers, inlineErrors);
 
     return new Response(markup, {
       status: response.status,
@@ -592,8 +692,8 @@ export default async function inlineResources(ctx, beurl, response) {
     }
   }
 
-  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, navPath, 'header');
-  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, footerPath, 'footer');
+  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, navPath, 'header');
+  markup = await inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, footerPath, 'footer');
 
   // rebuild the response with the updated markup and cache keys
   // Combine cloudflare cache tags across both headers so both contain the union
@@ -627,6 +727,7 @@ export default async function inlineResources(ctx, beurl, response) {
   });
 
   applyLastModified(headers, response.headers, lastModified);
+  applyInlineErrors(headers, inlineErrors);
 
   // Return uncompressed markup - CDN will handle compression via x-compress-hint
   return new Response(markup, {

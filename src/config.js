@@ -12,8 +12,11 @@
 
 import { decompressResponse } from './decompress.js';
 import {
-  errorWithResponse, ffetch, globToRegExp, hostGlobToRegExp, redactHeaders,
+  errorWithResponse, globToRegExp, hostGlobToRegExp, redactHeaders,
 } from './util.js';
+import {
+  CONFIG_FETCH_TIMEOUT, fetchUpstream, NO_STORE_HEADERS, readEnv,
+} from './timeouts.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
@@ -140,15 +143,15 @@ export async function resolveConfig(ctx) {
   const { log } = ctx;
 
   log.debug('headers: ', redactHeaders(ctx.info.headers), ctx.info.headers.referer);
-  const isDev = await ctx.env.DEV === 'true';
+  const isDev = await readEnv(ctx, 'DEV') === 'true';
   let ref;
   let site;
   let org;
   if (isDev) {
     [ref, site, org] = await Promise.all([
-      ctx.env.REF,
-      ctx.env.SITE,
-      ctx.env.ORG,
+      readEnv(ctx, 'REF'),
+      readEnv(ctx, 'SITE'),
+      readEnv(ctx, 'ORG'),
     ]);
   } else {
     ([ref, site, org] = ctx.info.subdomain.split('--'));
@@ -171,11 +174,23 @@ export async function resolveConfig(ctx) {
   if (SOURCE === 'STORAGE') {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
-    const configUrl = `https://config.aem.page/main--${site}--${org}/config.json?scope=public`;
-    const res = await ffetch(
-      configUrl,
-      getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
-    );
+    const configUrl = new URL(`https://config.aem.page/main--${site}--${org}/config.json?scope=public`);
+    const { res, json } = await fetchUpstream(ctx, {
+      stage: 'config',
+      url: configUrl.href,
+      init: getConfigFetchInit(await readEnv(ctx, 'HLX_CONFIG_SERVICE_TOKEN')),
+      timeout: CONFIG_FETCH_TIMEOUT,
+      // read the body within the timeout too: a stall after the headers must not hang
+      read: async (r) => {
+        if (!r.ok) {
+          return { res: r };
+        }
+        // Decompress before parsing — Fastly Compute doesn't auto-decompress fetch responses,
+        // so res.json() fails on gzip-encoded bodies from the config CDN.
+        const decompressed = await decompressResponse(r, { log });
+        return { res: r, json: await decompressed.json() };
+      },
+    });
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
@@ -185,14 +200,15 @@ export async function resolveConfig(ctx) {
           backends: {},
         };
       } else {
-        log.error('config fetch failed', res.status, res.headers.get('x-error') || res.statusText);
-        throw errorWithResponse(res.status, 'config fetch failed');
+        const message = `config fetch failed (${configUrl.host}): ${res.status}`;
+        log.error(message, res.headers.get('x-error') || res.statusText, `(request=${ctx.requestId})`);
+        // an upstream server error is not a mixer error: report it as a bad gateway
+        if (res.status >= 500) {
+          throw errorWithResponse(502, message, '', NO_STORE_HEADERS);
+        }
+        throw errorWithResponse(res.status, message);
       }
     } else {
-      // Decompress before parsing — Fastly Compute doesn't auto-decompress fetch responses,
-      // so res.json() fails on gzip-encoded bodies from the config CDN.
-      const decompressed = await decompressResponse(res, { log });
-      const json = await decompressed.json();
       rawConfig = json.public?.mixerConfig ?? { patterns: {}, backends: {} };
     }
   }

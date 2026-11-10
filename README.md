@@ -141,6 +141,26 @@ Backends may define an `originOverrides` map to conditionally override backend p
 - DNS requests race between multiple providers (`1.1.1.1`, `dns.google`) for optimal latency
 - On CI service hosts, an `x-custom-domain` request header forces custom-domain resolution for testing
 
+### Timeouts and Upstream Errors
+
+Every subrequest has a timeout. Each timeout is also capped by a **30s overall deadline** that starts when the request is received, so slow subrequests can't add up past it (for example, after a 12s config fetch the backend gets at most 18s). Once the deadline has passed, remaining subrequests aren't sent.
+
+| Subrequest | Timeout | On timeout or network error |
+|---|---|---|
+| Config fetch | 15s | `502`, `x-error: config fetch timeout (config.aem.page) after 15000ms` or `config fetch error (config.aem.page): {message}` |
+| Backend fetch | 30s | `502`, `x-error: backend fetch timeout ({host}) after 30000ms` or `backend fetch error ({host}): {message}` |
+| Inline fragment / header / footer | 15s | The inline is skipped and the page is served uncacheable (`cache-control: private, no-store`, CDN cache headers removed) with `x-inline-error: fragment fetch timeout ({path}) after 15000ms` (or `header` / `footer`, `fetch error`, or `skipped ({path}): request deadline exceeded`) |
+| DoH CNAME lookup | 5s | The lookup is treated as failed (no CNAME) |
+
+- An upstream 5xx from the config service returns `502` with `x-error: config fetch failed (config.aem.page): {status}`; 4xx keeps its status.
+- Backend responses, including 5xx, are passed through unchanged.
+- `500` means an error in the mixer itself; `502` means an upstream problem.
+- Env values that the edge adapter resolves asynchronously (e.g. the config service token) are bounded by the deadline too: a stalled or failed read returns `502` with `x-error: env read timeout ({NAME}) after {ms}ms` / `env read error ({NAME}): {message}`.
+- Mixer-generated `502`s carry `cache-control: private, no-store`, so downstream caches don't keep a transient upstream error.
+- Bodies the mixer buffers are covered by the timeout too: the config JSON, inlined fragment / header / footer bodies, and the backend page when inlines are configured (a stall or failure there returns `502`). A backend body that is streamed through isn't covered: once its headers are sent, a stall can't become a `502`.
+- Fastly Compute has no `AbortController`, so the timeout is enforced with `setTimeout` and `Promise.race`; where `AbortController` exists (Cloudflare), the subrequest is also aborted.
+- Each timeout is logged with the upstream host, the elapsed time and the request ID (Fastly trace ID or Cloudflare ray ID).
+
 ## Development
 
 ### Prerequisites

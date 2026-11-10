@@ -64,6 +64,10 @@ declare global {
 
   export interface Context {
     executionContext: ExecutionContext
+    /** epoch ms by which all subrequests must have completed */
+    deadline?: number;
+    /** request ID (Fastly trace ID or Cloudflare ray ID) for log correlation */
+    requestId?: string;
     url: URL;
     env: Env;
     log: Console;
