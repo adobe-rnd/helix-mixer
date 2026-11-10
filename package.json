@@ -62,7 +62,7 @@
     "@adobe/fetch": "4.2.2",
     "@adobe/helix-deploy": "12.4.39",
     "@adobe/helix-deploy-plugin-edge": "1.1.1",
-    "@cloudflare/workers-types": "4.20251113.0",
+    "@cloudflare/workers-types": "4.20260702.1",
     "@eslint/config-helpers": "0.7.0",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/exec": "6.0.3",
@@ -82,7 +82,7 @@
     "nock": "13.5.4",
     "semantic-release": "24.2.7",
     "sinon": "19.0.5",
-    "wrangler": "4.47.0"
+    "wrangler": "4.59.1"
   },
   "lint-staged": {
     "*.(js|cjs|mjs)": "eslint"
