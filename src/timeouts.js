@@ -10,7 +10,9 @@
  * governing permissions and limitations under the License.
  */
 
-import { errorWithResponse, ffetch, FetchTimeoutError } from './util.js';
+import {
+  errorWithResponse, ffetch, FetchTimeoutError, withTimeout,
+} from './util.js';
 
 /**
  * Overall deadline (ms) for a request, measured from when the request is received.
@@ -82,14 +84,15 @@ export const NO_STORE_HEADERS = Object.freeze({ 'cache-control': 'private, no-st
  * @param {Error} opts.error
  * @param {number} opts.timeout timeout (ms) that applied
  * @param {number} opts.start epoch ms when the subrequest started
+ * @param {string} [opts.action] what was done, used in the message
  * @returns {Error & { response: Response }}
  */
 export function upstreamError(ctx, {
-  stage, host, error, timeout, start,
+  stage, host, error, timeout, start, action = 'fetch',
 }) {
   const message = error instanceof FetchTimeoutError
-    ? `${stage} fetch timeout (${host}) after ${timeout}ms`
-    : `${stage} fetch error (${host}): ${error.message}`;
+    ? `${stage} ${action} timeout (${host}) after ${timeout}ms`
+    : `${stage} ${action} error (${host}): ${error.message}`;
   ctx.log.error(`${message} (elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
   // @ts-ignore
   return errorWithResponse(502, toHeaderValue(message), '', NO_STORE_HEADERS);
@@ -131,6 +134,34 @@ export async function fetchUpstream(ctx, {
   } catch (error) {
     throw upstreamError(ctx, {
       stage, host, error, timeout, start,
+    });
+  }
+}
+
+/**
+ * Reads an env value. Edge adapters may resolve env values asynchronously (e.g. a KV
+ * read or a fetch from the deploy gateway), so a pending value is bounded by the
+ * request deadline. A timeout or failure becomes a `502`, e.g.
+ * `env read timeout (NAME) after 30000ms`. Plain values are returned as is.
+ *
+ * @param {Context} ctx
+ * @param {string} name
+ * @returns {Promise<string|undefined>}
+ */
+export async function readEnv(ctx, name) {
+  const value = ctx.env[name];
+  if (typeof value?.then !== 'function') {
+    // @ts-ignore
+    return value;
+  }
+  const timeout = getTimeout(ctx, REQUEST_DEADLINE);
+  const start = Date.now();
+  try {
+    // @ts-ignore
+    return await withTimeout(Promise.resolve(value), timeout);
+  } catch (error) {
+    throw upstreamError(ctx, {
+      stage: 'env', action: 'read', host: name, error, timeout, start,
     });
   }
 }

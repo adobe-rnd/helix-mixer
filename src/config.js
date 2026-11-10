@@ -14,7 +14,9 @@ import { decompressResponse } from './decompress.js';
 import {
   errorWithResponse, globToRegExp, hostGlobToRegExp, redactHeaders,
 } from './util.js';
-import { CONFIG_FETCH_TIMEOUT, fetchUpstream, NO_STORE_HEADERS } from './timeouts.js';
+import {
+  CONFIG_FETCH_TIMEOUT, fetchUpstream, NO_STORE_HEADERS, readEnv,
+} from './timeouts.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
@@ -141,15 +143,15 @@ export async function resolveConfig(ctx) {
   const { log } = ctx;
 
   log.debug('headers: ', redactHeaders(ctx.info.headers), ctx.info.headers.referer);
-  const isDev = await ctx.env.DEV === 'true';
+  const isDev = await readEnv(ctx, 'DEV') === 'true';
   let ref;
   let site;
   let org;
   if (isDev) {
     [ref, site, org] = await Promise.all([
-      ctx.env.REF,
-      ctx.env.SITE,
-      ctx.env.ORG,
+      readEnv(ctx, 'REF'),
+      readEnv(ctx, 'SITE'),
+      readEnv(ctx, 'ORG'),
     ]);
   } else {
     ([ref, site, org] = ctx.info.subdomain.split('--'));
@@ -176,7 +178,7 @@ export async function resolveConfig(ctx) {
     const { res, json } = await fetchUpstream(ctx, {
       stage: 'config',
       url: configUrl.href,
-      init: getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
+      init: getConfigFetchInit(await readEnv(ctx, 'HLX_CONFIG_SERVICE_TOKEN')),
       timeout: CONFIG_FETCH_TIMEOUT,
       // read the body within the timeout too: a stall after the headers must not hang
       read: async (r) => {

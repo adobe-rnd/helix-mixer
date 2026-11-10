@@ -11,7 +11,7 @@
  */
 
 import { redactHeaders } from './util.js';
-import { BACKEND_FETCH_TIMEOUT, fetchUpstream } from './timeouts.js';
+import { BACKEND_FETCH_TIMEOUT, fetchUpstream, readEnv } from './timeouts.js';
 import inlineResources from './inlines.js';
 
 /**
@@ -32,7 +32,7 @@ export default async function handler(ctx) {
 
   ctx.log.debug('fetching: ', beurl);
 
-  const productPipelineToken = isPipelineReq ? await ctx.env.PRODUCT_PIPELINE_TOKEN : undefined;
+  const productPipelineToken = isPipelineReq ? await readEnv(ctx, 'PRODUCT_PIPELINE_TOKEN') : undefined;
   const fetchHeaders = {
     ...ctx.info.headers,
     // Always force gzip/deflate to prevent brotli cache poisoning.

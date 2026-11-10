@@ -155,6 +155,7 @@ Every subrequest has a timeout. Each timeout is also capped by a **30s overall d
 - An upstream 5xx from the config service returns `502` with `x-error: config fetch failed (config.aem.page): {status}`; 4xx keeps its status.
 - Backend responses, including 5xx, are passed through unchanged.
 - `500` means an error in the mixer itself; `502` means an upstream problem.
+- Env values that the edge adapter resolves asynchronously (e.g. the config service token) are bounded by the deadline too: a stalled or failed read returns `502` with `x-error: env read timeout ({NAME}) after {ms}ms` / `env read error ({NAME}): {message}`.
 - Mixer-generated `502`s carry `cache-control: private, no-store`, so downstream caches don't keep a transient upstream error.
 - Bodies the mixer buffers are covered by the timeout too: the config JSON, inlined fragment / header / footer bodies, and the backend page when inlines are configured (a stall or failure there returns `502`). A backend body that is streamed through isn't covered: once its headers are sent, a stall can't become a `502`.
 - Fastly Compute has no `AbortController`, so the timeout is enforced with `setTimeout` and `Promise.race`; where `AbortController` exists (Cloudflare), the subrequest is also aborted.

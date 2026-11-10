@@ -421,6 +421,29 @@ describe('subrequest timeouts', () => {
       assert.match(console.error.firstCall.args[0], /request=trace-1/);
     });
 
+    it('bounds a pending env read by the request deadline', async () => {
+      const calls = [];
+      globalThis.fetch = stallingFetch(calls);
+      const promise = main(request(), { env: { HLX_CONFIG_SERVICE_TOKEN: new Promise(() => {}) } });
+      await clock.tickAsync(REQUEST_DEADLINE);
+      const res = await promise;
+      assert.strictEqual(res.status, 502);
+      assert.strictEqual(res.headers.get('x-error'), `env read timeout (HLX_CONFIG_SERVICE_TOKEN) after ${REQUEST_DEADLINE}ms`);
+      assert.strictEqual(res.headers.get('cache-control'), 'private, no-store');
+      assert.strictEqual(calls.length, 0);
+    });
+
+    it('returns 502 when an env read fails', async () => {
+      const calls = [];
+      globalThis.fetch = stallingFetch(calls);
+      const token = Promise.reject(new Error('gateway unavailable'));
+      token.catch(() => {});
+      const res = await main(request(), { env: { HLX_CONFIG_SERVICE_TOKEN: token } });
+      assert.strictEqual(res.status, 502);
+      assert.strictEqual(res.headers.get('x-error'), 'env read error (HLX_CONFIG_SERVICE_TOKEN): gateway unavailable');
+      assert.strictEqual(calls.length, 0);
+    });
+
     it('keeps 500 for errors in the mixer itself', async () => {
       globalThis.fetch = async () => configResponse(MIXER_CONFIG);
       const res = await main(request(), {
