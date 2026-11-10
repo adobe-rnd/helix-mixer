@@ -582,6 +582,20 @@ describe('subrequest timeouts', () => {
       assert.ok(logged.includes(`dns lookup timeout (dns.google) after ${DNS_LOOKUP_TIMEOUT}ms (elapsed=5000ms, request=req-4)`));
     });
 
+    it('returns null when one provider fails and the other stalls on the body', async () => {
+      globalThis.fetch = async (url) => {
+        if (new URL(url).host === '1.1.1.1') {
+          return new Response('', { status: 503 });
+        }
+        return stalledBody({ 'content-type': 'application/dns-message' });
+      };
+      const promise = resolveCustomDomain('www.example.com', 'req-5');
+      await clock.tickAsync(DNS_LOOKUP_TIMEOUT);
+      assert.strictEqual(await promise, null);
+      const logged = console.warn.getCalls().map((c) => c.args[0]);
+      assert.ok(logged.includes(`dns lookup timeout (dns.google) after ${DNS_LOOKUP_TIMEOUT}ms (elapsed=5000ms, request=req-5)`));
+    });
+
     it('returns null and logs on network error', async () => {
       globalThis.fetch = async () => {
         throw new TypeError('network connection lost');

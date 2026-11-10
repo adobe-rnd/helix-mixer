@@ -125,9 +125,16 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
     headers: { accept: 'application/dns-message' },
   };
   const start = Date.now();
-  let res;
+  /** @type {ArrayBuffer|null} */
+  let body;
   try {
-    res = await fetchWithTimeout(url, init, DNS_LOOKUP_TIMEOUT);
+    // read the body within the timeout too, so a stalled body can't hang the lookup
+    body = await fetchWithTimeout(
+      url,
+      init,
+      DNS_LOOKUP_TIMEOUT,
+      async (res) => (res.ok ? res.arrayBuffer() : null),
+    );
   } catch (e) {
     const message = e instanceof FetchTimeoutError
       ? `dns lookup timeout (${url.host}) after ${DNS_LOOKUP_TIMEOUT}ms`
@@ -136,10 +143,10 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
     console.warn(`${message} (elapsed=${Date.now() - start}ms, request=${requestId})`);
     return null;
   }
-  if (!res.ok) {
+  if (!body) {
     return null;
   }
-  const buf = new Uint8Array(await res.arrayBuffer());
+  const buf = new Uint8Array(body);
   const dv = new DataView(buf.buffer);
   const qdcount = dv.getUint16(4);
   const ancount = dv.getUint16(6);

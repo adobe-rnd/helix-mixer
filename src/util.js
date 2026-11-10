@@ -45,7 +45,8 @@ export function redactHeaders(headers = {}) {
 }
 
 /**
- * Thrown by {@link ffetch} when no response headers arrived within the timeout.
+ * Thrown by {@link ffetch} / {@link withTimeout} when the response headers (and the
+ * body, when the caller buffers it with `read`) didn't arrive within the timeout.
  */
 export class FetchTimeoutError extends Error {
   /**

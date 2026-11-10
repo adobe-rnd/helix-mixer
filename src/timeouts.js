@@ -19,16 +19,24 @@ import { errorWithResponse, ffetch, FetchTimeoutError } from './util.js';
  */
 export const REQUEST_DEADLINE = 30000;
 
-/** Timeout (ms) until response headers for the config service fetch. */
+/**
+ * Timeouts cover the response headers and, where the caller buffers the body, the
+ * body read as well. A backend body that is streamed through is not covered.
+ */
+
+/** Timeout (ms) for the config service fetch, incl. reading the config JSON. */
 export const CONFIG_FETCH_TIMEOUT = 15000;
 
-/** Timeout (ms) until response headers for the backend fetch. */
+/**
+ * Timeout (ms) for the backend fetch: until the response headers, plus reading the
+ * page when inlines are configured.
+ */
 export const BACKEND_FETCH_TIMEOUT = 30000;
 
-/** Timeout (ms) until response headers for inlined fragment / header / footer fetches. */
+/** Timeout (ms) for inlined fragment / header / footer fetches, incl. the body. */
 export const INLINE_FETCH_TIMEOUT = 15000;
 
-/** Timeout (ms) for a single DoH CNAME lookup. */
+/** Timeout (ms) for a single DoH CNAME lookup, incl. the body. */
 export const DNS_LOOKUP_TIMEOUT = 5000;
 
 const MAX_HEADER_MESSAGE_LENGTH = 256;
