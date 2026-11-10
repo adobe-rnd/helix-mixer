@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+/* eslint-disable max-classes-per-file */
+
 const SENSITIVE_HEADERS = new Set([
   'api-key',
   'authorization',
@@ -43,14 +45,69 @@ export function redactHeaders(headers = {}) {
 }
 
 /**
+ * Thrown by {@link ffetch} when no response headers arrived within the timeout.
+ */
+export class FetchTimeoutError extends Error {
+  /**
+   * @param {number} timeout - The timeout in milliseconds.
+   */
+  constructor(timeout) {
+    super(`fetch timeout after ${timeout}ms`);
+    this.name = 'FetchTimeoutError';
+    this.timeout = timeout;
+    Object.setPrototypeOf(this, FetchTimeoutError.prototype);
+  }
+}
+
+/**
+ * Fetch that rejects with a {@link FetchTimeoutError} if no response headers arrive
+ * within `timeout` ms.
+ *
+ * Fastly Compute has no `AbortController` / `AbortSignal`, so the timeout is enforced
+ * with `setTimeout` and `Promise.race`, which works on every runtime. Where
+ * `AbortController` exists (Cloudflare, Node), the subrequest is also aborted. The
+ * timer is cleared once headers arrive, so streaming the body is never aborted.
+ *
+ * @param {string|URL} url
+ * @param {Record<string, unknown>} init
+ * @param {number} timeout
+ * @returns {Promise<Response>}
+ */
+export async function fetchWithTimeout(url, init, timeout) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new FetchTimeoutError(timeout);
+      // reject first, so the race settles with the timeout error, not the abort error
+      reject(error);
+      controller?.abort(error);
+    }, timeout);
+  });
+  try {
+    return await Promise.race([
+      // @ts-ignore
+      fetch(url, controller ? { ...init, signal: controller.signal } : init),
+      timeoutPromise,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * @type {(
- *  url: string,
- *  init?: import("@cloudflare/workers-types").RequestInit
+ *  url: string|URL,
+ *  init?: import("@cloudflare/workers-types").RequestInit | Record<string, unknown>,
+ *  opts?: { timeout?: number }
  * ) => Promise<import("@cloudflare/workers-types").Response>}
  */
-export const ffetch = async (url, init) => {
-  // @ts-ignore
-  const resp = await fetch(url, init);
+export const ffetch = async (url, init, { timeout } = {}) => {
+  const resp = typeof timeout === 'number'
+    // @ts-ignore
+    ? await fetchWithTimeout(url, init, timeout)
+    // @ts-ignore
+    : await fetch(url, init);
   console.debug({
     url,
     status: resp.status,

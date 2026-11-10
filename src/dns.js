@@ -10,6 +10,9 @@
  * governing permissions and limitations under the License.
  */
 
+import { fetchWithTimeout, FetchTimeoutError } from './util.js';
+import { DNS_LOOKUP_TIMEOUT } from './timeouts.js';
+
 /**
  * Base64url-encode a DNS wire message.
  * @param {Uint8Array} bytes
@@ -112,7 +115,7 @@ function decodeName(buf, offset) {
  * @param {string} domain
  * @returns {Promise<string|null>}
  */
-async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-query') {
+async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-query', requestId = '-') {
   const query = buildQuery(domain, 5);
   const url = new URL(provider);
   url.searchParams.set('dns', b64url(query));
@@ -121,7 +124,18 @@ async function resolveCnameViaDoH(domain, provider = 'https://dns.google/dns-que
     method: 'GET',
     headers: { accept: 'application/dns-message' },
   };
-  const res = await fetch(url, init);
+  const start = Date.now();
+  let res;
+  try {
+    res = await fetchWithTimeout(url, init, DNS_LOOKUP_TIMEOUT);
+  } catch (e) {
+    const message = e instanceof FetchTimeoutError
+      ? `dns lookup timeout (${url.host}) after ${DNS_LOOKUP_TIMEOUT}ms`
+      : `dns lookup error (${url.host}): ${e.message}`;
+    // eslint-disable-next-line no-console
+    console.warn(`${message} (elapsed=${Date.now() - start}ms, request=${requestId})`);
+    return null;
+  }
   if (!res.ok) {
     return null;
   }
@@ -165,9 +179,10 @@ const ORIGIN_PATTERN = new RegExp(`^${SEGMENT}--${SEGMENT}--${SEGMENT}\\.domains
  * - dns.google - faster when running on Fastly or other networks
  * Uses Promise.any() to return the first successful (non-null) response.
  * @param {string} domain
+ * @param {string} [requestId] for log correlation
  * @returns {Promise<string|null>}
  */
-export async function resolveCustomDomain(domain) {
+export async function resolveCustomDomain(domain, requestId) {
   const providers = [
     'https://1.1.1.1/dns-query',
     'https://dns.google/dns-query',
@@ -178,7 +193,7 @@ export async function resolveCustomDomain(domain) {
     // Reject null results so Promise.any continues to the next provider
     const cname = await Promise.any(
       providers.map(async (provider) => {
-        const result = await resolveCnameViaDoH(domain, provider);
+        const result = await resolveCnameViaDoH(domain, provider, requestId);
         if (!result || !ORIGIN_PATTERN.test(result)) {
           throw new Error(`No valid CNAME from ${provider}`);
         }

@@ -141,6 +141,24 @@ Backends may define an `originOverrides` map to conditionally override backend p
 - DNS requests race between multiple providers (`1.1.1.1`, `dns.google`) for optimal latency
 - On CI service hosts, an `x-custom-domain` request header forces custom-domain resolution for testing
 
+### Timeouts and Upstream Errors
+
+Every subrequest has a timeout until its response headers arrive. Each timeout is also capped by a **30s overall deadline** that starts when the request is received, so slow subrequests can't add up past it (for example, after a 12s config fetch the backend gets at most 18s).
+
+| Subrequest | Timeout | On timeout or network error |
+|---|---|---|
+| Config fetch | 15s | `502`, `x-error: config fetch timeout (config.aem.page) after 15000ms` or `config fetch error (config.aem.page): {message}` |
+| Backend fetch | 30s | `502`, `x-error: backend fetch timeout ({host}) after 30000ms` or `backend fetch error ({host}): {message}` |
+| Inline fragment / header / footer | 15s | The inline is skipped and the page is served with `x-inline-error: fragment fetch timeout ({path}) after 15000ms` (or `header` / `footer`, or `fetch error`) |
+| DoH CNAME lookup | 5s | The lookup is treated as failed (no CNAME) |
+
+- An upstream 5xx from the config service returns `502` with `x-error: config fetch failed (config.aem.page): {status}`; 4xx keeps its status.
+- Backend responses, including 5xx, are passed through unchanged.
+- `500` means an error in the mixer itself; `502` means an upstream problem.
+- Timeouts only cover the time until response headers arrive. Bodies are streamed, so a stall after the headers can't become a `502`.
+- Fastly Compute has no `AbortController`, so the timeout is enforced with `setTimeout` and `Promise.race`; where `AbortController` exists (Cloudflare), the subrequest is also aborted.
+- Each timeout is logged with the upstream host, the elapsed time and the request ID (Fastly trace ID or Cloudflare ray ID).
+
 ## Development
 
 ### Prerequisites

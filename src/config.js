@@ -12,8 +12,9 @@
 
 import { decompressResponse } from './decompress.js';
 import {
-  errorWithResponse, ffetch, globToRegExp, hostGlobToRegExp, redactHeaders,
+  errorWithResponse, globToRegExp, hostGlobToRegExp, redactHeaders,
 } from './util.js';
+import { CONFIG_FETCH_TIMEOUT, fetchUpstream } from './timeouts.js';
 
 /** @type {'CONFIG_SERVICE' | 'STORAGE'} */
 const SOURCE = 'CONFIG_SERVICE';
@@ -171,11 +172,13 @@ export async function resolveConfig(ctx) {
   if (SOURCE === 'STORAGE') {
     rawConfig = await ctx.storage.get(siteKey, 'json');
   } else {
-    const configUrl = `https://config.aem.page/main--${site}--${org}/config.json?scope=public`;
-    const res = await ffetch(
-      configUrl,
-      getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
-    );
+    const configUrl = new URL(`https://config.aem.page/main--${site}--${org}/config.json?scope=public`);
+    const res = await fetchUpstream(ctx, {
+      stage: 'config',
+      url: configUrl.href,
+      init: getConfigFetchInit(await ctx.env.HLX_CONFIG_SERVICE_TOKEN),
+      timeout: CONFIG_FETCH_TIMEOUT,
+    });
     if (!res.ok) {
       if (res.status === 404) {
         // throw errorWithResponse(404, 'config not found');
@@ -185,8 +188,10 @@ export async function resolveConfig(ctx) {
           backends: {},
         };
       } else {
-        log.error('config fetch failed', res.status, res.headers.get('x-error') || res.statusText);
-        throw errorWithResponse(res.status, 'config fetch failed');
+        const message = `config fetch failed (${configUrl.host}): ${res.status}`;
+        log.error(message, res.headers.get('x-error') || res.statusText, `(request=${ctx.requestId})`);
+        // an upstream server error is not a mixer error: report it as a bad gateway
+        throw errorWithResponse(res.status >= 500 ? 502 : res.status, message);
       }
     } else {
       // Decompress before parsing — Fastly Compute doesn't auto-decompress fetch responses,
