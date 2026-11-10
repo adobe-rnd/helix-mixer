@@ -60,31 +60,69 @@ export function getTimeout(ctx, timeout) {
 }
 
 /**
+ * Headers for responses that report an upstream problem, so downstream caches don't
+ * keep a transient error.
+ */
+export const NO_STORE_HEADERS = Object.freeze({ 'cache-control': 'private, no-store' });
+
+/**
+ * Creates the `502` response error for a failed required upstream, and logs it.
+ * @param {Context} ctx
+ * @param {object} opts
+ * @param {string} opts.stage name of the subrequest, e.g. `config` or `backend`
+ * @param {string} opts.host upstream host
+ * @param {Error} opts.error
+ * @param {number} opts.timeout timeout (ms) that applied
+ * @param {number} opts.start epoch ms when the subrequest started
+ * @returns {Error & { response: Response }}
+ */
+export function upstreamError(ctx, {
+  stage, host, error, timeout, start,
+}) {
+  const message = error instanceof FetchTimeoutError
+    ? `${stage} fetch timeout (${host}) after ${timeout}ms`
+    : `${stage} fetch error (${host}): ${error.message}`;
+  ctx.log.error(`${message} (elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
+  // @ts-ignore
+  return errorWithResponse(502, toHeaderValue(message), '', NO_STORE_HEADERS);
+}
+
+/**
  * Fetches a required upstream resource. Timeouts and network errors are turned into a
  * `502` response error with an `x-error` identifying the stage and upstream host, e.g.
- * `config fetch timeout (config.example) after 15000ms`.
+ * `config fetch timeout (config.example) after 15000ms`. If the request deadline has
+ * already passed, the subrequest isn't sent.
  *
+ * If `read` is given, it runs inside the timeout, and its errors (e.g. a body that
+ * fails or stalls) are handled the same way.
+ *
+ * @template [T=import("@cloudflare/workers-types").Response]
  * @param {Context} ctx
  * @param {object} opts
  * @param {string} opts.stage name of the subrequest, e.g. `config` or `backend`
  * @param {string} opts.url
  * @param {Record<string, unknown>} opts.init fetch init
  * @param {number} opts.timeout timeout (ms) before the deadline cap
- * @returns {Promise<import("@cloudflare/workers-types").Response>}
+ * @param {(response: any) => T | Promise<T>} [opts.read]
+ * @returns {Promise<T>}
  */
 export async function fetchUpstream(ctx, {
-  stage, url, init, timeout: maxTimeout,
+  stage, url, init, timeout: maxTimeout, read,
 }) {
   const { host } = new URL(url);
   const timeout = getTimeout(ctx, maxTimeout);
+  if (timeout <= 0) {
+    const message = `${stage} fetch skipped (${host}): request deadline exceeded`;
+    ctx.log.error(`${message} (request=${ctx.requestId})`);
+    throw errorWithResponse(502, message, '', NO_STORE_HEADERS);
+  }
   const start = Date.now();
   try {
-    return await ffetch(url, init, { timeout });
-  } catch (e) {
-    const message = e instanceof FetchTimeoutError
-      ? `${stage} fetch timeout (${host}) after ${timeout}ms`
-      : `${stage} fetch error (${host}): ${e.message}`;
-    ctx.log.error(`${message} (elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
-    throw errorWithResponse(502, toHeaderValue(message));
+    // @ts-ignore
+    return await ffetch(url, init, { timeout, read });
+  } catch (error) {
+    throw upstreamError(ctx, {
+      stage, host, error, timeout, start,
+    });
   }
 }

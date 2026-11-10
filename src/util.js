@@ -60,62 +60,89 @@ export class FetchTimeoutError extends Error {
 }
 
 /**
- * Fetch that rejects with a {@link FetchTimeoutError} if no response headers arrive
- * within `timeout` ms.
+ * Races `promise` against a timer. Rejects with a {@link FetchTimeoutError} if it
+ * hasn't settled within `timeout` ms, after calling `onTimeout` (e.g. to abort).
+ * The timer is always cleared.
  *
- * Fastly Compute has no `AbortController` / `AbortSignal`, so the timeout is enforced
- * with `setTimeout` and `Promise.race`, which works on every runtime. Where
- * `AbortController` exists (Cloudflare, Node), the subrequest is also aborted. The
- * timer is cleared once headers arrive, so streaming the body is never aborted.
- *
- * @param {string|URL} url
- * @param {Record<string, unknown>} init
+ * @template T
+ * @param {Promise<T>} promise
  * @param {number} timeout
- * @returns {Promise<Response>}
+ * @param {(error: FetchTimeoutError) => void} [onTimeout]
+ * @returns {Promise<T>}
  */
-export async function fetchWithTimeout(url, init, timeout) {
-  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+export async function withTimeout(promise, timeout, onTimeout) {
   let timer;
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
       const error = new FetchTimeoutError(timeout);
-      // reject first, so the race settles with the timeout error, not the abort error
+      // reject first, so the race settles with the timeout error, not an abort error
       reject(error);
-      controller?.abort(error);
+      onTimeout?.(error);
     }, timeout);
   });
   try {
-    return await Promise.race([
-      // @ts-ignore
-      fetch(url, controller ? { ...init, signal: controller.signal } : init),
-      timeoutPromise,
-    ]);
+    return await Promise.race([promise, timeoutPromise]);
   } finally {
     clearTimeout(timer);
   }
 }
 
 /**
- * @type {(
+ * Fetch that rejects with a {@link FetchTimeoutError} if it doesn't complete within
+ * `timeout` ms. By default that's until the response headers arrive. If `read` is
+ * given, it runs inside the timeout too, so callers that buffer the body (e.g.
+ * `(res) => res.json()`) are covered until the body is read.
+ *
+ * Fastly Compute has no `AbortController` / `AbortSignal`, so the timeout is enforced
+ * with `setTimeout` and `Promise.race`, which works on every runtime. Where
+ * `AbortController` exists (Cloudflare, Node), the subrequest is also aborted. The
+ * timer is cleared once `read` completes, so a body streamed afterwards is never
+ * aborted.
+ *
+ * @template [T=Response]
+ * @param {string|URL} url
+ * @param {Record<string, unknown>} init
+ * @param {number} timeout
+ * @param {(response: Response) => T | Promise<T>} [read]
+ * @returns {Promise<T>}
+ */
+export async function fetchWithTimeout(url, init, timeout, read) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  // @ts-ignore
+  const pending = fetch(url, controller ? { ...init, signal: controller.signal } : init);
+  return withTimeout(
+    read ? pending.then(read) : pending,
+    timeout,
+    (error) => controller?.abort(error),
+  );
+}
+
+/**
+ * Fetch with debug logging and an optional timeout. See {@link fetchWithTimeout}
+ * for `timeout` and `read`.
+ *
+ * @type {<T = import("@cloudflare/workers-types").Response>(
  *  url: string|URL,
  *  init?: import("@cloudflare/workers-types").RequestInit | Record<string, unknown>,
- *  opts?: { timeout?: number }
- * ) => Promise<import("@cloudflare/workers-types").Response>}
+ *  opts?: { timeout?: number, read?: (response: any) => T | Promise<T> }
+ * ) => Promise<T>}
  */
-export const ffetch = async (url, init, { timeout } = {}) => {
-  const resp = typeof timeout === 'number'
+export const ffetch = async (url, init, { timeout, read } = {}) => {
+  const onResponse = (resp) => {
+    console.debug({
+      url,
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: redactHeaders(Object.fromEntries(resp.headers)),
+    });
+    return read ? read(resp) : resp;
+  };
+  if (typeof timeout === 'number') {
     // @ts-ignore
-    ? await fetchWithTimeout(url, init, timeout)
-    // @ts-ignore
-    : await fetch(url, init);
-  console.debug({
-    url,
-    status: resp.status,
-    statusText: resp.statusText,
-    headers: redactHeaders(Object.fromEntries(resp.headers)),
-  });
+    return fetchWithTimeout(url, init, timeout, onResponse);
+  }
   // @ts-ignore
-  return resp;
+  return onResponse(await fetch(url, init));
 };
 
 /**
@@ -141,13 +168,14 @@ export class ResponseError extends Error {
  * @param {number} status - The HTTP status code.
  * @param {string} xError - The error message.
  * @param {string|Record<string,unknown>} [body=''] - The response body.
+ * @param {Record<string,string>} [headers] - Additional response headers.
  * @returns {import("@cloudflare/workers-types").Response} - A response object.
  */
-export function errorResponse(status, xError, body = '') {
+export function errorResponse(status, xError, body = '', headers = {}) {
   // @ts-ignore
   return new Response(typeof body === 'object' ? JSON.stringify(body) : body, {
     status,
-    headers: { 'x-error': xError },
+    headers: { ...headers, 'x-error': xError },
   });
 }
 
@@ -155,10 +183,11 @@ export function errorResponse(status, xError, body = '') {
  * @param {number} status - The HTTP status code.
  * @param {string} xError - The error message.
  * @param {string|Record<string,unknown>} [body=''] - The response body.
+ * @param {Record<string,string>} [headers] - Additional response headers.
  * @returns {Error & {response: import("@cloudflare/workers-types").Response}}
  */
-export function errorWithResponse(status, xError, body = '') {
-  const response = errorResponse(status, xError, body);
+export function errorWithResponse(status, xError, body = '', headers = {}) {
+  const response = errorResponse(status, xError, body, headers);
   const error = new ResponseError(xError, response);
   return error;
 }

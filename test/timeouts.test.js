@@ -53,6 +53,21 @@ function silentLog() {
   };
 }
 
+/** A response whose body never completes. */
+function stalledBody(headers = {}) {
+  return new Response(new ReadableStream({ start() {} }), { status: 200, headers });
+}
+
+/** A response whose body fails mid-stream. */
+function brokenBody(headers = {}) {
+  return new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('<html>'));
+      controller.error(new TypeError('connection reset'));
+    },
+  }), { status: 200, headers });
+}
+
 function configResponse(mixerConfig) {
   return new Response(JSON.stringify({ public: { mixerConfig } }), {
     status: 200,
@@ -172,6 +187,7 @@ describe('subrequest timeouts', () => {
       const assertion = assert.rejects(promise, (e) => {
         assert.strictEqual(e.response.status, 502);
         assert.strictEqual(e.response.headers.get('x-error'), `config fetch timeout (config.aem.page) after ${CONFIG_FETCH_TIMEOUT}ms`);
+        assert.strictEqual(e.response.headers.get('cache-control'), 'private, no-store');
         return true;
       });
       await clock.tickAsync(CONFIG_FETCH_TIMEOUT);
@@ -208,6 +224,28 @@ describe('subrequest timeouts', () => {
       await assert.rejects(resolveConfig(configCtx()), (e) => {
         assert.strictEqual(e.response.status, 502);
         assert.strictEqual(e.response.headers.get('x-error'), 'config fetch failed (config.aem.page): 500');
+        assert.strictEqual(e.response.headers.get('cache-control'), 'private, no-store');
+        return true;
+      });
+    });
+
+    it('returns 502 when the body stalls after the headers', async () => {
+      globalThis.fetch = async () => stalledBody({ 'content-type': 'application/json' });
+      const promise = resolveConfig(configCtx());
+      const assertion = assert.rejects(promise, (e) => {
+        assert.strictEqual(e.response.status, 502);
+        assert.strictEqual(e.response.headers.get('x-error'), `config fetch timeout (config.aem.page) after ${CONFIG_FETCH_TIMEOUT}ms`);
+        return true;
+      });
+      await clock.tickAsync(CONFIG_FETCH_TIMEOUT);
+      await assertion;
+    });
+
+    it('returns 502 when the body fails', async () => {
+      globalThis.fetch = async () => brokenBody({ 'content-type': 'application/json' });
+      await assert.rejects(resolveConfig(configCtx()), (e) => {
+        assert.strictEqual(e.response.status, 502);
+        assert.strictEqual(e.response.headers.get('x-error'), 'config fetch error (config.aem.page): connection reset');
         return true;
       });
     });
@@ -216,6 +254,7 @@ describe('subrequest timeouts', () => {
       globalThis.fetch = async () => new Response('', { status: 403 });
       await assert.rejects(resolveConfig(configCtx()), (e) => {
         assert.strictEqual(e.response.status, 403);
+        assert.strictEqual(e.response.headers.get('cache-control'), null);
         assert.strictEqual(e.response.headers.get('x-error'), 'config fetch failed (config.aem.page): 403');
         return true;
       });
@@ -243,6 +282,7 @@ describe('subrequest timeouts', () => {
       const assertion = assert.rejects(promise, (e) => {
         assert.strictEqual(e.response.status, 502);
         assert.strictEqual(e.response.headers.get('x-error'), `backend fetch timeout (backend.example) after ${BACKEND_FETCH_TIMEOUT}ms`);
+        assert.strictEqual(e.response.headers.get('cache-control'), 'private, no-store');
         return true;
       });
       await clock.tickAsync(BACKEND_FETCH_TIMEOUT);
@@ -270,6 +310,52 @@ describe('subrequest timeouts', () => {
         assert.strictEqual(e.response.status, 502);
         assert.strictEqual(e.response.headers.get('x-error'), 'backend fetch error (backend.example): connection reset by peer');
         return true;
+      });
+    });
+
+    it('does not send the request when the deadline has passed', async () => {
+      const calls = [];
+      globalThis.fetch = stallingFetch(calls);
+      await assert.rejects(handler(backendCtx({ deadline: Date.now() - 1 })), (e) => {
+        assert.strictEqual(e.response.status, 502);
+        assert.strictEqual(e.response.headers.get('x-error'), 'backend fetch skipped (backend.example): request deadline exceeded');
+        assert.strictEqual(e.response.headers.get('cache-control'), 'private, no-store');
+        return true;
+      });
+      assert.strictEqual(calls.length, 0);
+    });
+
+    describe('when inlining (body is buffered)', () => {
+      const ORIGIN = 'main--site--org.aem.live';
+      const inliningCtx = (overrides) => backendCtx({
+        config: {
+          protocol: 'https',
+          origin: ORIGIN,
+          pathname: '/page',
+          inlineFragments: { paths: ['/fragments/'] },
+        },
+        ...overrides,
+      });
+
+      it('returns 502 when the backend body stalls', async () => {
+        globalThis.fetch = async () => stalledBody({ 'content-type': 'text/html' });
+        const promise = handler(inliningCtx({ deadline: Date.now() + REQUEST_DEADLINE }));
+        const assertion = assert.rejects(promise, (e) => {
+          assert.strictEqual(e.response.status, 502);
+          assert.strictEqual(e.response.headers.get('x-error'), `backend fetch timeout (${ORIGIN}) after ${BACKEND_FETCH_TIMEOUT}ms`);
+          return true;
+        });
+        await clock.tickAsync(BACKEND_FETCH_TIMEOUT);
+        await assertion;
+      });
+
+      it('returns 502 when the backend body fails', async () => {
+        globalThis.fetch = async () => brokenBody({ 'content-type': 'text/html' });
+        await assert.rejects(handler(inliningCtx()), (e) => {
+          assert.strictEqual(e.response.status, 502);
+          assert.strictEqual(e.response.headers.get('x-error'), `backend fetch error (${ORIGIN}): connection reset`);
+          return true;
+        });
       });
     });
 
@@ -362,16 +448,23 @@ describe('subrequest timeouts', () => {
       ...overrides,
     });
 
+    const CACHEABLE = {
+      'cache-control': 'max-age=300',
+      'surrogate-control': 'max-age=86400',
+      'cdn-cache-control': 'max-age=86400',
+      'surrogate-key': 'page-key',
+    };
+
     it('skips a fragment that times out and adds x-inline-error', async () => {
       globalThis.fetch = (url, init) => {
         if (url.toString().endsWith('/fragments/fast.plain.html')) {
-          return Promise.resolve(html('<div>fast</div>'));
+          return Promise.resolve(html('<div>fast</div>', { 'surrogate-key': 'fast-key' }));
         }
         return stallingFetch()(url, init);
       };
       const ctx = inlineCtx({ inlineFragments: { paths: ['/fragments/'] } });
       const initial = '<p><a href="/fragments/slow">slow</a></p><p><a href="/fragments/fast">fast</a></p>';
-      const promise = inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html(initial));
+      const promise = inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html(initial, CACHEABLE));
       await clock.tickAsync(INLINE_FETCH_TIMEOUT);
       const res = await promise;
       assert.strictEqual(res.status, 200);
@@ -380,7 +473,59 @@ describe('subrequest timeouts', () => {
         `fragment fetch timeout (/fragments/slow) after ${INLINE_FETCH_TIMEOUT}ms`,
       );
       assert.strictEqual(await res.text(), '<p><a href="/fragments/slow">slow</a></p><div>fast</div>');
+      // the page lacks the fragment and its cache keys: it must not be cached
+      assert.strictEqual(res.headers.get('cache-control'), 'private, no-store');
+      assert.strictEqual(res.headers.get('surrogate-control'), null);
+      assert.strictEqual(res.headers.get('cdn-cache-control'), null);
+      assert.strictEqual(res.headers.get('surrogate-key'), 'page-key fast-key');
       assert.match(ctx.log.warn.firstCall.args[0], /host=main--site--org\.aem\.live, elapsed=15000ms, request=req-3/);
+    });
+
+    it('keeps cache headers when all inlines succeed', async () => {
+      globalThis.fetch = async () => html('<div>fast</div>');
+      const ctx = inlineCtx({ inlineFragments: { paths: ['/fragments/'] } });
+      const res = await inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html('<p><a href="/fragments/fast">fast</a></p>', CACHEABLE));
+      assert.strictEqual(res.headers.get('x-inline-error'), null);
+      assert.strictEqual(res.headers.get('cache-control'), 'max-age=300');
+      assert.strictEqual(res.headers.get('surrogate-control'), 'max-age=86400');
+      assert.strictEqual(res.headers.get('cdn-cache-control'), 'max-age=86400');
+    });
+
+    it('skips a fragment whose body stalls', async () => {
+      globalThis.fetch = async () => stalledBody({ 'content-type': 'text/html' });
+      const ctx = inlineCtx({ inlineFragments: { paths: ['/fragments/'] } });
+      const promise = inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html('<p><a href="/fragments/slow">slow</a></p>'));
+      await clock.tickAsync(INLINE_FETCH_TIMEOUT);
+      const res = await promise;
+      assert.strictEqual(res.headers.get('x-inline-error'), `fragment fetch timeout (/fragments/slow) after ${INLINE_FETCH_TIMEOUT}ms`);
+      assert.strictEqual(await res.text(), '<p><a href="/fragments/slow">slow</a></p>');
+    });
+
+    it('does not fetch inlines once the deadline has passed', async () => {
+      const calls = [];
+      globalThis.fetch = stallingFetch(calls);
+      const ctx = inlineCtx({ inlineNav: true }, { deadline: Date.now() - 1 });
+      const initial = '<html><head><meta name="nav" content="/nav"></head><body><header></header></body></html>';
+      const res = await inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html(initial, CACHEABLE));
+      assert.strictEqual(calls.length, 0);
+      assert.strictEqual(res.headers.get('x-inline-error'), 'header skipped (/nav): request deadline exceeded');
+      assert.strictEqual(res.headers.get('cache-control'), 'private, no-store');
+    });
+
+    it('stops sequential header and footer fetches at the deadline', async () => {
+      globalThis.fetch = stallingFetch();
+      const ctx = inlineCtx(
+        { inlineNav: true, inlineFooter: true },
+        { deadline: Date.now() + 20000 },
+      );
+      const initial = '<html><head><meta name="nav" content="/nav"><meta name="footer" content="/footer"></head><body><header></header><footer></footer></body></html>';
+      const promise = inlineResources(ctx, new URL(`https://${ORIGIN}/page`), html(initial));
+      await clock.tickAsync(20000);
+      const res = await promise;
+      assert.strictEqual(
+        res.headers.get('x-inline-error'),
+        'header fetch timeout (/nav) after 15000ms, footer fetch timeout (/footer) after 5000ms',
+      );
     });
 
     it('caps inline timeouts at the request deadline', async () => {
