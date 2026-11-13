@@ -793,6 +793,99 @@ describe('inlines tests', () => {
     assert.strictEqual(result.headers.get('cache-tag'), 'baz,baz2,ec1,ec2');
   });
 
+  it('should merge cloudfront cache tags from original response and inline resources', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineNav: true,
+        inlineFooter: true,
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/nav/nav.plain.html'] = new Response(getFixture('inline-both', 'nav'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-amz-meta-cache-tag': 'site,nav-key,head',
+      },
+    });
+    mockResponses['https://main--helix-website--adobe.aem.live/footer/footer.plain.html'] = new Response(getFixture('inline-both', 'footer'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-amz-meta-cache-tag': 'site, footer-key, head',
+      },
+    });
+
+    const response = new Response(getFixture('inline-both', 'initial'), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-amz-meta-cache-tag': 'site,page-key,head',
+      },
+    });
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    const body = await result.text();
+    assert.strictEqual(result.status, 200);
+    assert.strictEqual(body, getFixture('inline-both', 'expected'));
+    // deduped, original response tags first, then nav, then footer
+    assert.strictEqual(result.headers.get('x-amz-meta-cache-tag'), 'site,page-key,head,nav-key,footer-key');
+    // does not leak into the other cdn headers
+    assert.strictEqual(result.headers.get('cache-tag'), null);
+    assert.strictEqual(result.headers.get('x-cache-tag'), null);
+    assert.strictEqual(result.headers.get('surrogate-key'), null);
+    assert.strictEqual(result.headers.get('edge-cache-tag'), null);
+  });
+
+  it('should merge cloudfront cache tags from fragment subrequests', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineFragments: { paths: ['/fragments/'] },
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/fragments/homepage-quiz.plain.html'] = new Response('<div class="quiz-fragment">Take the quiz</div>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-amz-meta-cache-tag': 'site,frag1',
+      },
+    });
+
+    const response = new Response('<p><a href="/fragments/homepage-quiz">quiz</a></p>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'x-amz-meta-cache-tag': 'site,root1',
+      },
+    });
+
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('x-amz-meta-cache-tag'), 'site,root1,frag1');
+  });
+
+  it('should not add a cloudfront cache tag header when no response has one', async () => {
+    const ctx = TEST_CONTEXT({
+      config: {
+        inlineNav: true,
+        origin: 'main--helix-website--adobe.aem.live',
+      },
+    });
+
+    mockResponses['https://main--helix-website--adobe.aem.live/nav/nav.plain.html'] = new Response(getFixture('inline-both', 'nav'), {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    });
+
+    const response = new Response(getFixture('inline-both', 'initial'), {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    });
+    const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
+    assert.strictEqual(result.headers.get('x-amz-meta-cache-tag'), null);
+  });
+
   it('should send push invalidation headers for fragment subrequests', async () => {
     const localFetch = globalThis.fetch;
     let fragmentFetchCount = 0;
