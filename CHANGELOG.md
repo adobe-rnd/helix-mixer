@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.11.0...v1.11.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **inlines:** merge CloudFront cache tags from inlined resources ([#69](https://github.com/adobe-rnd/helix-mixer/issues/69)) ([ceae84b](https://github.com/adobe-rnd/helix-mixer/commit/ceae84bff6c6026c28da56cd6c9068ef7ec97725))
+
 # [1.11.0](https://github.com/adobe-rnd/helix-mixer/compare/v1.10.0...v1.11.0) (2026-11-10)
 
 
