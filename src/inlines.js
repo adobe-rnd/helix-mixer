@@ -110,6 +110,8 @@ function createCacheKeys(headers) {
     'cache-tag': new Set(headers.get('cache-tag')?.split(',') || []),
     // cache-tag headers may be stripped by cloudflare, collect x-cache-tag as well
     'x-cache-tag': new Set(headers.get('x-cache-tag')?.split(',') || []),
+    // cloudfront
+    'x-amz-meta-cache-tag': new Set(headers.get('x-amz-meta-cache-tag')?.split(',') || []),
   };
 }
 
