@@ -946,7 +946,7 @@ describe('inlines tests', () => {
 
         const inline = (resourcePath = `/${resource}`) => inlineResources(
           ctx,
-          new URL(origin),
+          new URL(`${ctx.config.protocol}://${ctx.config.origin}`),
           new Response(markup(resourcePath), { headers: { 'content-type': 'text/html' } }),
         );
 
@@ -996,6 +996,39 @@ describe('inlines tests', () => {
           });
         });
 
+        [
+          ['HTTPS live', 'https', host, true],
+          ['HTTPS preview', 'https', 'main--helix-website--adobe.aem.page', true],
+          ['Product Pipeline', 'https', 'pipeline-cloudflare.adobecommerce.live', false],
+          ['HTTP live', 'http', host, false],
+          ['HTTP preview', 'http', 'main--helix-website--adobe.aem.page', false],
+        ].forEach(([name, protocol, backendHost, forwardAuth]) => {
+          it(`${forwardAuth ? 'forwards' : 'omits'} authorization for the ${name} backend`, async () => {
+            ctx.config.protocol = protocol;
+            ctx.config.origin = backendHost;
+            const result = await inline();
+            assert.ok((await result.text()).includes(content));
+            assert.strictEqual(requests.length, 1);
+            assert.strictEqual(requests[0].url, `${protocol}://${backendHost}/${resource}.plain.html`);
+            assert.deepStrictEqual(requests[0].init.headers, {
+              ...cdnHeaders,
+              ...(forwardAuth ? { authorization } : {}),
+            });
+            assert.strictEqual(requests[0].init.redirect, forwardAuth ? 'manual' : undefined);
+            assert.deepStrictEqual(warnings, []);
+          });
+        });
+
+        it('does not forward authorization from a pipeline page to an EDS inline', async () => {
+          ctx.config.origin = 'pipeline-cloudflare.adobecommerce.live';
+          const result = await inline(`${origin}/${resource}`);
+          assert.ok((await result.text()).includes(content));
+          assert.strictEqual(requests.length, 1);
+          assert.strictEqual(requests[0].url, `${origin}/${resource}.plain.html`);
+          assert.deepStrictEqual(requests[0].init.headers, cdnHeaders);
+          assert.strictEqual(requests[0].init.redirect, undefined);
+        });
+
         it('preserves the authorization scheme and value', async () => {
           ctx.info.headers = { ...cdnHeaders, authorization: 'Bearer another-token' };
           const result = await inline();
@@ -1022,6 +1055,7 @@ describe('inlines tests', () => {
           ['external absolute', `https://external.example/${resource}`],
           ['external protocol-relative', `//external.example/${resource}`],
           ['another EDS site', `https://main--other--adobe.aem.live/${resource}`],
+          ['another EDS environment', `https://main--helix-website--adobe.aem.page/${resource}`],
           ['different protocol', `http://${host}/${resource}`],
           ['different port', `${origin}:8443/${resource}`],
           ['hostname suffix', `${origin}.external.example/${resource}`],

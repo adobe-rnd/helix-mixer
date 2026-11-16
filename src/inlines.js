@@ -458,7 +458,11 @@ async function inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, pat
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
   const origin = new URL(`${ctx.config.protocol}://${ctx.config.origin}`);
   const url = new URL(ppath, origin);
-  const authorization = url.origin === origin.origin ? ctx.info.headers.authorization : undefined;
+  const isEdgeOrigin = url.protocol === 'https:'
+    && (url.hostname.endsWith('.aem.page') || url.hostname.endsWith('.aem.live'));
+  const authorization = isEdgeOrigin && url.origin === origin.origin
+    ? ctx.info.headers.authorization
+    : undefined;
   const tagResponse = await fetchInline(ctx, inlineErrors, tag, path, url, {
     // Keep credentials on the page's backend, including when it redirects.
     ...(authorization ? { redirect: 'manual' } : {}),
