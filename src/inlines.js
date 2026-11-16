@@ -456,11 +456,16 @@ async function inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, pat
   }
 
   const ppath = path.endsWith('.plain.html') ? path : `${path}.plain.html`;
-  const url = new URL(ppath, `${ctx.config.protocol}://${ctx.config.origin}`);
+  const origin = new URL(`${ctx.config.protocol}://${ctx.config.origin}`);
+  const url = new URL(ppath, origin);
+  const authorization = url.origin === origin.origin ? ctx.info.headers.authorization : undefined;
   const tagResponse = await fetchInline(ctx, inlineErrors, tag, path, url, {
+    // Keep credentials on the page's backend, including when it redirects.
+    ...(authorization ? { redirect: 'manual' } : {}),
     headers: {
       'x-byo-cdn-type': ctx.info.headers['x-byo-cdn-type'],
       'x-push-invalidation': ctx.info.headers['x-push-invalidation'],
+      ...(authorization ? { authorization } : {}),
     },
     cf: {
       cacheEverything: false,

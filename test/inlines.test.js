@@ -16,6 +16,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import inlineResources from '../src/inlines.js';
+import handler from '../src/handler.js';
 import { TEST_CONTEXT } from './util.js';
 
 const originalFetch = globalThis.fetch;
@@ -926,6 +927,186 @@ describe('inlines tests', () => {
     const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
     await result.text();
     assert.strictEqual(fragmentFetchCount, 1);
+  });
+
+  describe('nav/footer authorization', () => {
+    const host = 'main--helix-website--adobe.aem.live';
+    const origin = `https://${host}`;
+    const authorization = 'token site-token';
+    const cdnHeaders = { 'x-byo-cdn-type': 'akamai', 'x-push-invalidation': 'enabled' };
+
+    for (const [resource, tag] of [['nav', 'header'], ['footer', 'footer']]) {
+      describe(resource, () => {
+        const content = `<div>Protected ${resource}</div>`;
+        const markup = (resourcePath) => `<meta name="${resource}" content="${resourcePath}">\n<${tag}></${tag}>`;
+        let ctx;
+        let requests;
+        let warnings;
+        let inlineResponse;
+
+        const inline = (resourcePath = `/${resource}`) => inlineResources(
+          ctx,
+          new URL(origin),
+          new Response(markup(resourcePath), { headers: { 'content-type': 'text/html' } }),
+        );
+
+        beforeEach(() => {
+          requests = [];
+          warnings = [];
+          ctx = TEST_CONTEXT({
+            url: new URL('https://main--helix-website--adobe.aem.network/'),
+            config: { origin: host, inlineNav: resource === 'nav', inlineFooter: resource === 'footer' },
+            info: {
+              headers: Object.freeze({
+                ...cdnHeaders,
+                authorization,
+                cookie: 'session=private',
+                'x-auth-token': 'admin-token',
+              }),
+            },
+            log: { warn: (message) => warnings.push(message) },
+          });
+          inlineResponse = new Response(content, { headers: { 'content-type': 'text/html' } });
+          globalThis.fetch = async (url, init) => {
+            requests.push({ url: url.toString(), init });
+            return inlineResponse;
+          };
+        });
+
+        [
+          ['root-relative', `/${resource}`],
+          ['relative', resource],
+          ['absolute same-origin', `${origin}/${resource}`],
+          ['protocol-relative same-origin', `//${host}/${resource}`],
+          ['already plain HTML', `/${resource}.plain.html`],
+          ['normalized same-origin', `https://${host.toUpperCase()}:443/${resource}`],
+        ].forEach(([name, resourcePath]) => {
+          it(`forwards authorization for ${name} URLs`, async () => {
+            const result = await inline(resourcePath);
+            assert.strictEqual(await result.text(), markup(resourcePath).replace(
+              `<${tag}></${tag}>`,
+              `<${tag}>\n  ${content}\n</${tag}>`,
+            ));
+            assert.strictEqual(requests.length, 1);
+            assert.strictEqual(requests[0].url, `${origin}/${resource}.plain.html`);
+            assert.deepStrictEqual(requests[0].init.headers, { ...cdnHeaders, authorization });
+            assert.strictEqual(requests[0].init.redirect, 'manual');
+            assert.deepStrictEqual(requests[0].init.cf, { cacheEverything: false, cacheTtl: 0 });
+            assert.deepStrictEqual(warnings, []);
+          });
+        });
+
+        it('preserves the authorization scheme and value', async () => {
+          ctx.info.headers = { ...cdnHeaders, authorization: 'Bearer another-token' };
+          const result = await inline();
+          assert.ok((await result.text()).includes(content));
+          assert.strictEqual(requests.length, 1);
+          assert.strictEqual(requests[0].init.headers.authorization, 'Bearer another-token');
+        });
+
+        ['missing', 'empty'].forEach((state) => {
+          it(`omits authorization when the incoming header is ${state}`, async () => {
+            const { authorization: _, ...headers } = ctx.info.headers;
+            ctx.info.headers = state === 'empty' ? { ...headers, authorization: '' } : headers;
+            // Backend headers must not create credentials absent from the incoming request.
+            ctx.config.backend = { origin: host, headers: { authorization: 'token backend-token' } };
+            const result = await inline();
+            assert.ok((await result.text()).includes(content));
+            assert.strictEqual(requests.length, 1);
+            assert.deepStrictEqual(requests[0].init.headers, cdnHeaders);
+            assert.strictEqual(requests[0].init.redirect, undefined);
+          });
+        });
+
+        [
+          ['external absolute', `https://external.example/${resource}`],
+          ['external protocol-relative', `//external.example/${resource}`],
+          ['another EDS site', `https://main--other--adobe.aem.live/${resource}`],
+          ['different protocol', `http://${host}/${resource}`],
+          ['different port', `${origin}:8443/${resource}`],
+          ['hostname suffix', `${origin}.external.example/${resource}`],
+        ].forEach(([name, resourcePath]) => {
+          it(`does not forward authorization for ${name} URLs`, async () => {
+            const result = await inline(resourcePath);
+            assert.ok((await result.text()).includes(content));
+            assert.strictEqual(requests.length, 1);
+            assert.strictEqual(requests[0].url, new URL(`${resourcePath}.plain.html`, origin).href);
+            assert.deepStrictEqual(requests[0].init.headers, cdnHeaders);
+            assert.strictEqual(requests[0].init.redirect, undefined);
+          });
+        });
+
+        [401, 403].forEach((status) => {
+          it(`leaves the tag unchanged when the token is rejected with ${status}`, async () => {
+            inlineResponse = new Response('Access denied', { status, headers: { 'content-type': 'text/html' } });
+            const result = await inline();
+            assert.strictEqual(result.status, 200);
+            assert.strictEqual(await result.text(), markup(`/${resource}`));
+            assert.strictEqual(requests.length, 1);
+            assert.strictEqual(requests[0].init.headers.authorization, authorization);
+            assert.deepStrictEqual(warnings, [`Failed to inline ${tag} from /${resource}: ${status}`]);
+          });
+        });
+
+        it('does not follow redirects with authorization', async () => {
+          inlineResponse = new Response(null, {
+            status: 302,
+            headers: { location: `https://external.example/${resource}.plain.html` },
+          });
+          const result = await inline();
+          assert.strictEqual(await result.text(), markup(`/${resource}`));
+          assert.strictEqual(requests.length, 1);
+          assert.strictEqual(requests[0].init.redirect, 'manual');
+          assert.strictEqual(requests[0].init.headers.authorization, authorization);
+          assert.deepStrictEqual(warnings, [`Failed to inline ${tag} from /${resource}: 302`]);
+        });
+
+        it('does not fetch when inlining is disabled even with authorization', async () => {
+          ctx.config.inlineNav = false;
+          ctx.config.inlineFooter = false;
+          const result = await inline();
+          assert.strictEqual(await result.text(), markup(`/${resource}`));
+          assert.deepStrictEqual(requests, []);
+        });
+      });
+    }
+
+    it('inlines both protected resources through the main page handler', async () => {
+      const requests = [];
+      const page = '<meta name="nav" content="/nav"><meta name="footer" content="/footer">'
+        + '<header></header><main>Page</main><footer></footer>';
+      const bodies = {
+        '/': page,
+        '/nav.plain.html': '<nav>Protected nav</nav>',
+        '/footer.plain.html': '<div>Protected footer</div>',
+      };
+      globalThis.fetch = async (url, init) => {
+        requests.push({ url, init });
+        if (init.headers.authorization !== authorization) {
+          return new Response('Unauthorized', { status: 401 });
+        }
+        return new Response(bodies[new URL(url).pathname], {
+          headers: { 'content-type': 'text/html', 'cache-control': 'private, no-store' },
+        });
+      };
+      const ctx = TEST_CONTEXT({
+        url: new URL('https://main--helix-website--adobe.aem.network/'),
+        info: { headers: { ...cdnHeaders, authorization } },
+        config: {
+          origin: host, pathname: '/', inlineNav: true, inlineFooter: true,
+        },
+      });
+      const result = await handler(ctx);
+      assert.strictEqual(result.status, 200);
+      assert.strictEqual(await result.text(), page
+        .replace('<header></header>', '<header>\n  <nav>Protected nav</nav>\n</header>')
+        .replace('<footer></footer>', '<footer>\n  <div>Protected footer</div>\n</footer>'));
+      assert.strictEqual(result.headers.get('cache-control'), 'private, no-store');
+      assert.deepStrictEqual(requests.map(({ url }) => url), [
+        `${origin}/`, `${origin}/nav.plain.html`, `${origin}/footer.plain.html`,
+      ]);
+      requests.forEach(({ init }) => assert.strictEqual(init.headers.authorization, authorization));
+    });
   });
 
   it('should send push invalidation headers for nav/footer subrequests', async () => {
