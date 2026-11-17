@@ -931,6 +931,7 @@ describe('inlines tests', () => {
 
   describe('nav/footer authorization', () => {
     const host = 'main--helix-website--adobe.aem.live';
+    const workerHost = 'demo.adobeaem.workers.dev';
     const origin = `https://${host}`;
     const authorization = 'token site-token';
     const cdnHeaders = { 'x-byo-cdn-type': 'akamai', 'x-push-invalidation': 'enabled' };
@@ -999,9 +1000,11 @@ describe('inlines tests', () => {
         [
           ['HTTPS live', 'https', host, true],
           ['HTTPS preview', 'https', 'main--helix-website--adobe.aem.page', true],
+          ['HTTPS Adobe Worker', 'https', workerHost, true],
           ['Product Pipeline', 'https', 'pipeline-cloudflare.adobecommerce.live', false],
           ['HTTP live', 'http', host, false],
           ['HTTP preview', 'http', 'main--helix-website--adobe.aem.page', false],
+          ['HTTP Adobe Worker', 'http', workerHost, false],
         ].forEach(([name, protocol, backendHost, forwardAuth]) => {
           it(`${forwardAuth ? 'forwards' : 'omits'} authorization for the ${name} backend`, async () => {
             ctx.config.protocol = protocol;
@@ -1017,6 +1020,31 @@ describe('inlines tests', () => {
             assert.strictEqual(requests[0].init.redirect, forwardAuth ? 'manual' : undefined);
             assert.deepStrictEqual(warnings, []);
           });
+        });
+
+        [
+          'demo.other-account.workers.dev',
+          'demo.adobeaem.workers.dev.example.com',
+          'demo.notadobeaem.workers.dev',
+          'adobeaem.workers.dev',
+        ].forEach((backendHost) => {
+          it(`does not inline from an untrusted Worker backend: ${backendHost}`, async () => {
+            ctx.config.origin = backendHost;
+            const result = await inline();
+            assert.strictEqual(await result.text(), markup(`/${resource}`));
+            assert.deepStrictEqual(requests, []);
+          });
+        });
+
+        it('does not forward authorization between different Adobe Workers', async () => {
+          ctx.config.origin = workerHost;
+          const resourceUrl = `https://other.adobeaem.workers.dev/${resource}`;
+          const result = await inline(resourceUrl);
+          assert.ok((await result.text()).includes(content));
+          assert.strictEqual(requests.length, 1);
+          assert.strictEqual(requests[0].url, `${resourceUrl}.plain.html`);
+          assert.deepStrictEqual(requests[0].init.headers, cdnHeaders);
+          assert.strictEqual(requests[0].init.redirect, undefined);
         });
 
         it('does not forward authorization from a pipeline page to an EDS inline', async () => {
@@ -1056,6 +1084,7 @@ describe('inlines tests', () => {
           ['external protocol-relative', `//external.example/${resource}`],
           ['another EDS site', `https://main--other--adobe.aem.live/${resource}`],
           ['another EDS environment', `https://main--helix-website--adobe.aem.page/${resource}`],
+          ['Adobe Worker', `https://${workerHost}/${resource}`],
           ['different protocol', `http://${host}/${resource}`],
           ['different port', `${origin}:8443/${resource}`],
           ['hostname suffix', `${origin}.external.example/${resource}`],
@@ -1105,41 +1134,46 @@ describe('inlines tests', () => {
       });
     }
 
-    it('inlines both protected resources through the main page handler', async () => {
-      const requests = [];
-      const page = '<meta name="nav" content="/nav"><meta name="footer" content="/footer">'
-        + '<header></header><main>Page</main><footer></footer>';
-      const bodies = {
-        '/': page,
-        '/nav.plain.html': '<nav>Protected nav</nav>',
-        '/footer.plain.html': '<div>Protected footer</div>',
-      };
-      globalThis.fetch = async (url, init) => {
-        requests.push({ url, init });
-        if (init.headers.authorization !== authorization) {
-          return new Response('Unauthorized', { status: 401 });
-        }
-        return new Response(bodies[new URL(url).pathname], {
-          headers: { 'content-type': 'text/html', 'cache-control': 'private, no-store' },
+    [host, workerHost].forEach((backendHost) => {
+      it(`inlines both protected resources through the main page handler for ${backendHost}`, async () => {
+        const backendOrigin = `https://${backendHost}`;
+        const requests = [];
+        const page = '<meta name="nav" content="/nav"><meta name="footer" content="/footer">'
+          + '<header></header><main>Page</main><footer></footer>';
+        const bodies = {
+          '/': page,
+          '/nav.plain.html': '<nav>Protected nav</nav>',
+          '/footer.plain.html': '<div>Protected footer</div>',
+        };
+        globalThis.fetch = async (url, init) => {
+          requests.push({ url, init });
+          if (init.headers.authorization !== authorization) {
+            return new Response('Unauthorized', { status: 401 });
+          }
+          return new Response(bodies[new URL(url).pathname], {
+            headers: { 'content-type': 'text/html', 'cache-control': 'private, no-store' },
+          });
+        };
+        const ctx = TEST_CONTEXT({
+          url: new URL('https://main--helix-website--adobe.aem.network/'),
+          info: { headers: { ...cdnHeaders, authorization } },
+          config: {
+            origin: backendHost, pathname: '/', inlineNav: true, inlineFooter: true,
+          },
         });
-      };
-      const ctx = TEST_CONTEXT({
-        url: new URL('https://main--helix-website--adobe.aem.network/'),
-        info: { headers: { ...cdnHeaders, authorization } },
-        config: {
-          origin: host, pathname: '/', inlineNav: true, inlineFooter: true,
-        },
+        const result = await handler(ctx);
+        assert.strictEqual(result.status, 200);
+        assert.strictEqual(await result.text(), page
+          .replace('<header></header>', '<header>\n  <nav>Protected nav</nav>\n</header>')
+          .replace('<footer></footer>', '<footer>\n  <div>Protected footer</div>\n</footer>'));
+        assert.strictEqual(result.headers.get('cache-control'), 'private, no-store');
+        assert.deepStrictEqual(requests.map(({ url }) => url), [
+          `${backendOrigin}/`, `${backendOrigin}/nav.plain.html`, `${backendOrigin}/footer.plain.html`,
+        ]);
+        requests.forEach(({ init }) => {
+          assert.strictEqual(init.headers.authorization, authorization);
+        });
       });
-      const result = await handler(ctx);
-      assert.strictEqual(result.status, 200);
-      assert.strictEqual(await result.text(), page
-        .replace('<header></header>', '<header>\n  <nav>Protected nav</nav>\n</header>')
-        .replace('<footer></footer>', '<footer>\n  <div>Protected footer</div>\n</footer>'));
-      assert.strictEqual(result.headers.get('cache-control'), 'private, no-store');
-      assert.deepStrictEqual(requests.map(({ url }) => url), [
-        `${origin}/`, `${origin}/nav.plain.html`, `${origin}/footer.plain.html`,
-      ]);
-      requests.forEach(({ init }) => assert.strictEqual(init.headers.authorization, authorization));
     });
   });
 

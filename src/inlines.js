@@ -27,6 +27,7 @@ import {
 const INLINE_ORIGINS = [
   '.aem.live',
   '.aem.page',
+  '.adobeaem.workers.dev',
   'pipeline-cloudflare.adobecommerce.live',
 ];
 
@@ -459,7 +460,9 @@ async function inlineTag(ctx, markup, cacheKeys, lastModified, inlineErrors, pat
   const origin = new URL(`${ctx.config.protocol}://${ctx.config.origin}`);
   const url = new URL(ppath, origin);
   const isEdgeOrigin = url.protocol === 'https:'
-    && (url.hostname.endsWith('.aem.page') || url.hostname.endsWith('.aem.live'));
+    && (url.hostname.endsWith('.aem.page')
+      || url.hostname.endsWith('.aem.live')
+      || url.hostname.endsWith('.adobeaem.workers.dev'));
   const authorization = isEdgeOrigin && url.origin === origin.origin
     ? ctx.info.headers.authorization
     : undefined;
@@ -594,7 +597,8 @@ export function inlineConfigured(ctx) {
  * If config defines inlines, and the original requested resource is:
  *   0. a GET request
  *   1. an HTML document
- *   2. coming from *.aem.live|*.aem.page|pipeline-cloudflare.adobecommerce.live
+ *   2. coming from *.aem.live, *.aem.page, *.adobeaem.workers.dev,
+ *      or pipeline-cloudflare.adobecommerce.live
  *   3. contains a <meta name="nav|footer" content="..."> tag
  *   4. contains a <header> or <footer> element
  *   5. is not a .plain.html resource
