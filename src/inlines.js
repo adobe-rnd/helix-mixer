@@ -342,7 +342,8 @@ function isInlineable(response) {
  * Fetch a resource to inline, including its body when it can be inlined. On timeout
  * (headers or body), network error, or when the request deadline has passed, log a
  * warning, record the error (sent as `x-inline-error`) and return null so the inline
- * is skipped.
+ * is skipped. Any skipped inline, or one without a valid `last-modified`, sets
+ * `ctx.attributes.inlineDateUnknown`.
  * @param {Context} ctx
  * @param {string[]} inlineErrors
  * @param {'fragment' | 'header' | 'footer'} kind
@@ -357,15 +358,24 @@ async function fetchInline(ctx, inlineErrors, kind, path, url, init) {
     const message = `${kind} skipped (${path}): request deadline exceeded`;
     ctx.log.warn(`${message} (host=${url.host}, request=${ctx.requestId})`);
     inlineErrors.push(toHeaderValue(message));
+    ctx.attributes.inlineDateUnknown = true;
     return null;
   }
   const start = Date.now();
   try {
     return await ffetch(url.toString(), init, {
       timeout,
-      read: async (response) => (isInlineable(response)
-        ? { response, text: await response.text() }
-        : { response }),
+      read: async (response) => {
+        if (!isInlineable(response)) {
+          ctx.attributes.inlineDateUnknown = true;
+          return { response };
+        }
+        // without a date the merged last-modified can't vouch for this inline
+        if (Number.isNaN(Date.parse(response.headers.get('last-modified')))) {
+          ctx.attributes.inlineDateUnknown = true;
+        }
+        return { response, text: await response.text() };
+      },
     });
   } catch (e) {
     const message = e instanceof FetchTimeoutError
@@ -373,6 +383,7 @@ async function fetchInline(ctx, inlineErrors, kind, path, url, init) {
       : `${kind} fetch error (${path}): ${e.message}`;
     ctx.log.warn(`${message} (host=${url.host}, elapsed=${Date.now() - start}ms, request=${ctx.requestId})`);
     inlineErrors.push(toHeaderValue(message));
+    ctx.attributes.inlineDateUnknown = true;
     return null;
   }
 }
@@ -591,6 +602,24 @@ function getCompressionHint(ctx) {
 export function inlineConfigured(ctx) {
   const { config } = ctx;
   return !!config.inlineNav || !!config.inlineFooter || !!config.inlineFragments;
+}
+
+/**
+ * Whether the request is for an HTML page that {@link inlineResources} may change.
+ * @param {Context} ctx
+ * @param {URL} beurl
+ * @returns {boolean}
+ */
+export function canInline(ctx, beurl) {
+  if (!inlineConfigured(ctx) || ctx.info.method !== 'GET') {
+    return false;
+  }
+  if (!INLINE_ORIGINS.some((origin) => beurl.origin.endsWith(origin))) {
+    return false;
+  }
+  const lastSegment = beurl.pathname.split('/').pop();
+  return !lastSegment.includes('.')
+    || (lastSegment.endsWith('.html') && !lastSegment.endsWith('.plain.html'));
 }
 
 /**

@@ -15,7 +15,7 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import inlineResources from '../src/inlines.js';
+import inlineResources, { canInline } from '../src/inlines.js';
 import handler from '../src/handler.js';
 import { TEST_CONTEXT } from './util.js';
 
@@ -1382,5 +1382,28 @@ describe('inlines tests', () => {
     const result = await inlineResources(ctx, new URL('https://main--helix-website--adobe.aem.live'), response);
     const body = await result.text();
     assert.strictEqual(body, initialBody);
+  });
+
+  describe('canInline', () => {
+    const ctx = (config, method = 'GET') => TEST_CONTEXT({ info: { method }, config });
+    const NAV = { inlineNav: true };
+    const cases = [
+      ['https://main--site--org.aem.live/page', NAV, 'GET', true],
+      ['https://main--site--org.aem.live/', NAV, 'GET', true],
+      ['https://main--site--org.aem.live/a/', NAV, 'GET', true],
+      ['https://main--site--org.aem.live/index.html', NAV, 'GET', true],
+      ['https://main--site--org.aem.page/page', { inlineFragments: { paths: ['/f/'] } }, 'GET', true],
+      ['https://main--site--org.aem.live/nav.plain.html', NAV, 'GET', false],
+      ['https://main--site--org.aem.live/styles.css', NAV, 'GET', false],
+      ['https://main--site--org.aem.live/page', NAV, 'HEAD', false],
+      ['https://main--site--org.aem.live/page', NAV, 'POST', false],
+      ['https://main--site--org.aem.live/page', {}, 'GET', false],
+      ['https://example.com/page', NAV, 'GET', false],
+    ];
+    cases.forEach(([url, config, method, expected]) => {
+      it(`returns ${expected} for ${method} ${url} with ${JSON.stringify(config)}`, () => {
+        assert.strictEqual(canInline(ctx(config, method), new URL(url)), expected);
+      });
+    });
   });
 });

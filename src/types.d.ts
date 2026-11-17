@@ -82,6 +82,13 @@ declare global {
       subdomain: string;
       body: ReadableStream<any> | null;
     }
+    attributes: {
+      /**
+       * set when a nav, footer or fragment was skipped or had no valid `last-modified`,
+       * so the merged `last-modified` can't be trusted for conditional requests
+       */
+      inlineDateUnknown?: boolean;
+    }
   }
 }
 
