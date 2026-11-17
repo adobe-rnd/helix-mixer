@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.11.1...v1.11.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **inlines:** forward site auth to nav and footer ([#70](https://github.com/adobe-rnd/helix-mixer/issues/70)) ([f82b6ff](https://github.com/adobe-rnd/helix-mixer/commit/f82b6ffed0828af06f353e61b948f62e23bbff92))
+
 ## [1.11.1](https://github.com/adobe-rnd/helix-mixer/compare/v1.11.0...v1.11.1) (2026-11-13)
 
 
