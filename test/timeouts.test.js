@@ -533,6 +533,7 @@ describe('subrequest timeouts', () => {
       assert.strictEqual(calls.length, 0);
       assert.strictEqual(res.headers.get('x-inline-error'), 'header skipped (/nav): request deadline exceeded');
       assert.strictEqual(res.headers.get('cache-control'), 'private, no-store');
+      assert.strictEqual(ctx.attributes.inlineDateUnknown, true);
     });
 
     it('stops sequential header and footer fetches at the deadline', async () => {

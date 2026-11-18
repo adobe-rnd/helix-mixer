@@ -12,7 +12,40 @@
 
 import { redactHeaders } from './util.js';
 import { BACKEND_FETCH_TIMEOUT, fetchUpstream, readEnv } from './timeouts.js';
-import inlineResources from './inlines.js';
+import inlineResources, { canInline } from './inlines.js';
+
+const CONDITIONAL_HEADERS = ['if-modified-since', 'if-none-match'];
+
+/**
+ * Whether the merged page is unchanged since the client's `If-Modified-Since`.
+ * The client's `If-None-Match` can't be checked, because the merged page has no ETag of its own.
+ * An inline that was skipped or had no valid date leaves the merged `last-modified` untrustworthy.
+ * @param {Context} ctx
+ * @param {Headers} headers
+ * @param {number} status
+ * @returns {boolean}
+ */
+function notModified(ctx, headers, status) {
+  const reqHeaders = ctx.info.headers;
+  const ims = reqHeaders['if-modified-since'];
+  if (status !== 200 || !ims) {
+    return false;
+  }
+  if (reqHeaders['if-none-match'] || ctx.attributes.inlineDateUnknown) {
+    ctx.log.debug('Not answering 304 for merged page:', {
+      ifNoneMatch: !!reqHeaders['if-none-match'],
+      inlineDateUnknown: !!ctx.attributes.inlineDateUnknown,
+    });
+    return false;
+  }
+  const since = Date.parse(ims);
+  // only accept IMF-fixdate; other parseable strings are not valid HTTP-dates and must be ignored
+  if (Number.isNaN(since) || new Date(since).toUTCString() !== ims) {
+    return false;
+  }
+  const lastModified = Date.parse(headers.get('last-modified'));
+  return lastModified <= since;
+}
 
 /**
  * @param {Context} ctx
@@ -48,6 +81,13 @@ export default async function handler(ctx) {
     // backend-specific headers (incl. any resolved from originOverrides) win last
     ...(backend?.headers ?? {}),
   };
+
+  // The backend would compare the client's validators with the page alone and could answer 304
+  // even though the inlined nav/footer changed, so the merged page is checked after inlining.
+  const checkConditional = canInline(ctx, beurl);
+  if (checkConditional) {
+    CONDITIONAL_HEADERS.forEach((name) => delete fetchHeaders[name]);
+  }
 
   ctx.log.debug('Fetching with headers:', redactHeaders(fetchHeaders));
 
@@ -90,13 +130,26 @@ export default async function handler(ctx) {
     headers.set('x-cache-tag', cacheTag); // forward for debugging
   }
 
+  if (isPipelineReq && !ctx.info.headers['x-forwarded-host']) {
+    headers.set('x-robots-tag', 'noindex, nofollow');
+  }
+
+  if (checkConditional && notModified(ctx, headers, beresp.status)) {
+    ctx.log.debug('Answering 304 for merged page:', {
+      ifModifiedSince: ctx.info.headers['if-modified-since'],
+      lastModified: headers.get('last-modified'),
+    });
+    headers.delete('content-length');
+    headers.delete('content-encoding');
+    await beresp.body?.cancel();
+    return new Response(null, {
+      status: 304,
+      headers: Object.fromEntries(headers.entries()),
+    });
+  }
+
   return new Response(beresp.body, {
     status: beresp.status,
-    headers: {
-      ...Object.fromEntries(headers.entries()),
-      ...(isPipelineReq && !ctx.info.headers['x-forwarded-host'] ? {
-        'x-robots-tag': 'noindex, nofollow',
-      } : {}),
-    },
+    headers: Object.fromEntries(headers.entries()),
   });
 }
