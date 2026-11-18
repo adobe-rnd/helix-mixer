@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/adobe-rnd/helix-mixer/compare/v1.11.2...v1.11.3) (2026-11-18)
+
+
+### Bug Fixes
+
+* **inlines:** answer conditional requests against merged last-modified ([a043acf](https://github.com/adobe-rnd/helix-mixer/commit/a043acf614c27997d02c47ac634f8c86f4714c50))
+
 ## [1.11.2](https://github.com/adobe-rnd/helix-mixer/compare/v1.11.1...v1.11.2) (2026-11-17)
 
 
